@@ -4,4 +4,9 @@
  * Re-export from pages/AiModelSelection.
  */
 
-export { default, type AiModelSelectionProps, type AiModelConfig } from '../AiModelSelection';
+export { 
+  AiModelSelection,
+  default, 
+  type AiModelSelectionProps, 
+  type AiModelConfig 
+} from '../AiModelSelection';

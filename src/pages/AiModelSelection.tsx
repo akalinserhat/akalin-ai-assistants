@@ -44,7 +44,7 @@ export interface AiModelSelectionProps {
   title?: string;
 }
 
-const AiModelSelection: React.FC<AiModelSelectionProps> = ({
+export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
   isOpen,
   onClose,
   onSave,

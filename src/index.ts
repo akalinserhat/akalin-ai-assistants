@@ -56,7 +56,8 @@ export {
 } from './pages/BaseChatPage';
 
 export {
-  default as AiModelSelection,
+  AiModelSelection,
+  default as DefaultAiModelSelection,
   type AiModelSelectionProps,
   type AiModelConfig
 } from './pages/AiModelSelection';
