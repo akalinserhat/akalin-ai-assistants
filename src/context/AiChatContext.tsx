@@ -210,30 +210,17 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
     route: typeof window !== 'undefined' ? window.location.pathname : '/'
   });
 
+  const isSendingSessionRef = useRef<number | null>(null);
+
   // Yeni temiz oturum oluştur ve aktif yap
   const startNewSession = useCallback(async () => {
-    try {
-      const newSession = await adapterRef.current.createSession('Yeni Sohbet', selectedAgentId);
-      if (newSession && newSession.id) {
-        setSessions(prev => [newSession, ...prev.filter(s => s.id !== newSession.id)]);
-        setActiveSessionId(newSession.id);
-        setMessages([]);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('webakus_ai_active_session', String(newSession.id));
-        }
-        toast.success('Yeni sohbet başlatıldı.');
-        return;
-      }
-    } catch {
-      // Sessiz fallback
-    }
     setActiveSessionId(null);
     setMessages([]);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('webakus_ai_active_session');
     }
     toast.success('Yeni sohbet başlatıldı.');
-  }, [selectedAgentId]);
+  }, []);
 
   // Sayfa bağlamı değiştiğinde oturumu sıfırla
   const setPageContext = useCallback((newContext: AiPageContext | ((prev: AiPageContext) => AiPageContext)) => {
@@ -286,6 +273,11 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
   useEffect(() => {
     if (!activeSessionId) {
       setMessages([]);
+      return;
+    }
+
+    if (isSendingSessionRef.current === activeSessionId) {
+      isSendingSessionRef.current = null;
       return;
     }
 
@@ -408,18 +400,13 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
   const sendMessage = useCallback(async (text: string, customAgentId?: number) => {
     if (!text.trim() || isSending) return;
 
-    let targetSessionId = activeSessionId;
-
-    // Eğer aktif oturum yoksa, önce yeni bir oturum oluştur
-    if (!targetSessionId) {
-      targetSessionId = await createNewSession(text.slice(0, 30));
-    }
+    const currentSessionId = activeSessionId;
 
     const optimisticUserMsg: AiMessage = {
       id: Date.now(),
-      aiSohbetOturumuId: targetSessionId || 0,
+      aiSohbetOturumuId: currentSessionId || 0,
       role: 'user',
-      icerik: text,
+      icerik: text.trim(),
       tarih: new Date().toISOString()
     };
 
@@ -430,8 +417,9 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
 
     try {
       const payload = {
-        oturumId: targetSessionId,
-        mesaj: text,
+        aiSohbetOturumuId: currentSessionId,
+        oturumId: currentSessionId,
+        mesaj: text.trim(),
         aiAjanId: customAgentId || selectedAgentId,
         sayfaBaglami: pageContext.route,
         eylemVerisiJson: pageContext.data ? JSON.stringify(pageContext.data) : undefined
@@ -440,21 +428,35 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
       const result = await adapterRef.current.sendMessage(payload, abortControllerRef.current.signal);
 
       if (result) {
-        if (!targetSessionId && result.oturumId) {
-          targetSessionId = result.oturumId;
-          setActiveSessionId(result.oturumId);
+        const returnedSessionId = result.oturumId;
+        if (returnedSessionId && (!activeSessionId || activeSessionId !== returnedSessionId)) {
+          isSendingSessionRef.current = returnedSessionId;
+          setActiveSessionId(returnedSessionId);
           if (typeof window !== 'undefined') {
-            localStorage.setItem('webakus_ai_active_session', String(result.oturumId));
+            localStorage.setItem('webakus_ai_active_session', String(returnedSessionId));
           }
-          refreshSessions();
+          setSessions(prev => {
+            const exists = prev.some(s => s.id === returnedSessionId);
+            if (!exists) {
+              return [{
+                id: returnedSessionId,
+                baslik: result.oturumBaslik || text.trim().substring(0, 30),
+                sonAktiviteTarihi: new Date().toISOString(),
+                sonMesajOzet: (result.asistanCevabi || result.mesaj)?.icerik?.substring(0, 80),
+                mesajSayisi: 2
+              }, ...prev];
+            }
+            return prev;
+          });
         }
 
-        if (result.mesaj) {
-          setMessages(prev => [...prev, result.mesaj]);
+        const asistanMsg = result.asistanCevabi || result.mesaj;
+        if (asistanMsg) {
+          setMessages(prev => [...prev, asistanMsg]);
         }
       }
     } catch (err: any) {
-      if (err.name === 'CanceledError' || err.message === 'canceled') {
+      if (err.name === 'CanceledError' || err.message === 'canceled' || err.code === 'ERR_CANCELED') {
         // İptal edildi
         return;
       }
@@ -463,7 +465,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
         ...prev,
         {
           id: Date.now() + 1,
-          aiSohbetOturumuId: targetSessionId || 0,
+          aiSohbetOturumuId: currentSessionId || 0,
           role: 'assistant',
           icerik: 'Üzgünüm, şu anda yanıt veremiyorum. Lütfen tekrar deneyin.',
           tarih: new Date().toISOString()
@@ -473,7 +475,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
       setIsSending(false);
       abortControllerRef.current = null;
     }
-  }, [activeSessionId, isSending, selectedAgentId, pageContext, createNewSession, refreshSessions]);
+  }, [activeSessionId, isSending, selectedAgentId, pageContext]);
 
   return (
     <AiChatContext.Provider

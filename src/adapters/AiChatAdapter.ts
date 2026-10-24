@@ -49,11 +49,33 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
     },
 
     async sendMessage(payload, signal?: AbortSignal) {
-      const res = await axios.post(`${baseURL}/mesaj-gonder`, payload, {
+      const sessionId = payload.aiSohbetOturumuId ?? payload.oturumId;
+      const requestPayload = {
+        aiSohbetOturumuId: sessionId,
+        oturumId: sessionId,
+        mesaj: payload.mesaj,
+        aiAjanId: payload.aiAjanId,
+        sayfaBaglami: payload.sayfaBaglami,
+        eylemVerisiJson: payload.eylemVerisiJson,
+        dosyaIdleri: payload.dosyaIdleri
+      };
+
+      const res = await axios.post(`${baseURL}/mesaj-gonder`, requestPayload, {
         headers: getAuthHeaders(),
         signal
       });
-      return res.data;
+
+      const data = res.data;
+      const asistanMesaj = data?.asistanCevabi || data?.mesaj || data;
+
+      return {
+        oturumId: data?.oturumId ?? sessionId,
+        oturumBaslik: data?.oturumBaslik,
+        mesaj: asistanMesaj,
+        asistanCevabi: asistanMesaj,
+        kullaniciMesaji: data?.kullaniciMesaji,
+        islemSuresiMs: data?.islemSuresiMs
+      };
     },
 
     async deleteSession(sessionId: number): Promise<void> {
@@ -72,7 +94,8 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
 
     async getAgents(): Promise<AgentDefinition[]> {
       try {
-        const res = await axios.get(`${baseURL}/ajanlar`, {
+        const ajanlarUrl = baseURL.endsWith('/AiChat') ? baseURL.replace(/\/AiChat$/, '/AiAjanlar') : `${baseURL}/ajanlar`;
+        const res = await axios.get(ajanlarUrl, {
           headers: getAuthHeaders()
         });
         return Array.isArray(res.data) ? res.data : [];

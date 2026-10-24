@@ -111,7 +111,8 @@ export interface IAiChatAdapter {
   createSession: (title?: string, agentId?: number | null) => Promise<AiSession>;
   getMessages: (sessionId: number) => Promise<AiMessage[]>;
   sendMessage: (payload: {
-    oturumId: number | null;
+    oturumId?: number | null;
+    aiSohbetOturumuId?: number | null;
     mesaj: string;
     aiAjanId?: number | null;
     sayfaBaglami?: string;
@@ -119,7 +120,11 @@ export interface IAiChatAdapter {
     dosyaIdleri?: number[];
   }, signal?: AbortSignal) => Promise<{
     oturumId: number;
-    mesaj: AiMessage;
+    oturumBaslik?: string;
+    mesaj?: AiMessage;
+    asistanCevabi?: AiMessage;
+    kullaniciMesaji?: AiMessage;
+    islemSuresiMs?: number;
   }>;
   deleteSession: (sessionId: number) => Promise<void>;
   renameSession: (sessionId: number, newTitle: string) => Promise<void>;
