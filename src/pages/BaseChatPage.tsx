@@ -91,72 +91,15 @@ import '../styles/BaseChatPage.css';
 
 // ─── TİP TANIMLAMALARI (TYPES & INTERFACES) ──────────────────────────────────
 
-export interface ChatAttachment {
-    id?: string | number;
-    name: string;
-    size?: number;
-    type?: string;
-    url?: string;
-    file?: File;
-    cloudFileId?: number | string;
-}
+export type {
+    ChatAttachment,
+    ChatMessage,
+    ChatSession,
+    ChatAgent,
+    PromptSuggestion
+} from '../types';
 
-export interface ChatMessage {
-    id: string | number;
-    role: 'user' | 'assistant' | 'system' | 'error';
-    content: string;
-    timestamp?: Date | string | number;
-    model?: string;
-    provider?: string;
-    agentName?: string;
-    thinkingContent?: string;
-    toolCalls?: any[];
-    eylemPayload?: any; // ERP formu veya belgesine aktarılacak taslak veri
-    attachments?: ChatAttachment[];
-    status?: 'sending' | 'streaming' | 'done' | 'error';
-    isError?: boolean;
-    feedback?: 'like' | 'dislike' | null;
-    promptTokens?: number;
-    completionTokens?: number;
-    totalTokens?: number;
-    latencyMs?: number;
-    ttftMs?: number;
-}
-
-export interface ChatSession {
-    id: string | number;
-    title: string;
-    createdAt: Date | string | number;
-    updatedAt: Date | string | number;
-    messages: ChatMessage[];
-    agentId?: string | number;
-    modelId?: string;
-    pinned?: boolean;
-}
-
-export interface ChatAgent {
-    id: string | number;
-    ad: string;
-    kod?: string;
-    rol?: string;
-    modelAdi?: string;
-    saglayiciTuru?: number;
-    saglayiciTuruAdi?: string;
-    aciklama?: string;
-    avatar?: string;
-    sistemPromptu?: string;
-}
-
-export interface PromptSuggestion {
-    id?: string | number;
-    title: string;
-    prompt: string;
-    icon?: ReactNode;
-    category?: string;
-    description?: string;
-}
-
-export interface BaseChatPageProps extends BasePageProps {
+export interface BaseChatPageProps extends Omit<BasePageProps, 'onTitleEdit'> {
     // API & Backend Entegrasyonu
     apiEndpoint?: string;
     agentsEndpoint?: string;
@@ -165,18 +108,19 @@ export interface BaseChatPageProps extends BasePageProps {
     // Oturum (Session) Yönetimi
     sessions?: ChatSession[];
     activeSessionId?: string | number;
-    onSessionChange?: (session: ChatSession) => void;
-    onNewSession?: () => void;
-    onDeleteSession?: (sessionId: string | number) => void;
-    onRenameSession?: (sessionId: string | number, newTitle: string) => void;
-    onPinSession?: (sessionId: string | number, pinned: boolean) => void;
+    onSessionChange?: (session: ChatSession) => void | Promise<void>;
+    onNewSession?: () => void | Promise<void>;
+    onDeleteSession?: (sessionId: string | number) => void | Promise<void>;
+    onRenameSession?: (sessionId: string | number, newTitle: string) => void | Promise<void>;
+    onPinSession?: (sessionId: string | number, pinned: boolean) => void | Promise<void>;
+    onTitleEdit?: ((newTitle?: string) => void | Promise<void>) | (() => void | Promise<void>);
 
     // Mesajlar & Gönderme Eylemleri
     messages?: ChatMessage[];
-    onSendMessage?: (content: string, attachments: ChatAttachment[], session: ChatSession) => Promise<ChatMessage | string | void> | ChatMessage | string | void;
-    onRegenerateMessage?: (messageId: string | number) => void;
-    onMessageFeedback?: (messageId: string | number, feedback: 'like' | 'dislike' | null) => void;
-    onClearMessages?: (sessionId: string | number) => void;
+    onSendMessage?: (content: string, attachments: ChatAttachment[], session?: ChatSession | null) => Promise<ChatMessage | string | void> | ChatMessage | string | void;
+    onRegenerateMessage?: (messageId: string | number) => void | Promise<void>;
+    onMessageFeedback?: (messageId: string | number, feedback: 'like' | 'dislike' | null) => void | Promise<void>;
+    onClearMessages?: (sessionId: string | number) => void | Promise<void>;
     onApplyToForm?: (data: any, bulutDosyaId?: number | null) => void;
 
     // Kontrollü Üretim Durumu (Streaming & Stop)
@@ -190,7 +134,7 @@ export interface BaseChatPageProps extends BasePageProps {
     // Ajanlar ve Modeller
     agents?: ChatAgent[];
     selectedAgentId?: string | number;
-    onAgentChange?: (agent: ChatAgent) => void;
+    onAgentChange?: (agent: ChatAgent) => void | Promise<void>;
     defaultModel?: string;
 
     // Öneriler ve Hızlı Başlatıcılar

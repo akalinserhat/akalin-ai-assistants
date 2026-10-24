@@ -169,49 +169,73 @@ export interface ChatAttachment {
 
 export interface ChatMessage {
   id: string | number;
-  sender: 'user' | 'assistant' | 'system';
-  text: string;
-  timestamp?: string;
-  status?: 'sending' | 'sent' | 'error' | 'streaming';
-  isStreaming?: boolean;
-  tokens?: number;
+  role: 'user' | 'assistant' | 'system' | 'error' | 'tool';
+  content: string;
+  sender?: 'user' | 'assistant' | 'system';
+  text?: string;
+  timestamp?: Date | string | number;
   model?: string;
-  durationMs?: number;
+  provider?: string;
+  agentName?: string;
   thinkingContent?: string;
-  feedback?: 'like' | 'dislike' | null;
-  attachments?: ChatAttachment[];
+  toolCalls?: any[];
+  eylemPayload?: any; // ERP formu veya belgesine aktarılacak taslak veri
   actionPayload?: any;
+  attachments?: ChatAttachment[];
+  status?: 'sending' | 'streaming' | 'done' | 'sent' | 'error';
+  isError?: boolean;
+  isStreaming?: boolean;
+  feedback?: 'like' | 'dislike' | null;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  tokens?: number;
+  latencyMs?: number;
+  durationMs?: number;
+  ttftMs?: number;
   customData?: Record<string, any>;
 }
 
 export interface ChatSession {
   id: string | number;
   title: string;
-  createdAt: string;
-  updatedAt?: string;
+  createdAt: Date | string | number;
+  updatedAt?: Date | string | number;
+  messages: ChatMessage[];
   messageCount?: number;
   agentId?: string | number;
+  modelId?: string;
   pinned?: boolean;
 }
 
 export interface ChatAgent {
   id: string | number;
-  name: string;
+  name?: string;
+  ad?: string;
+  kod?: string;
+  rol?: string;
+  modelAdi?: string;
+  model?: string;
+  saglayiciTuru?: number;
+  saglayiciTuruAdi?: string;
+  aciklama?: string;
   description?: string;
   avatar?: string;
   icon?: ReactNode;
   systemPrompt?: string;
-  model?: string;
+  sistemPromptu?: string;
   temperature?: number;
   category?: string;
+  isLocal?: boolean;
 }
 
 export interface PromptSuggestion {
   id?: string | number;
   title: string;
   prompt: string;
-  category?: string;
   icon?: ReactNode;
+  category?: string;
+  description?: string;
 }
 
 // ─── MODÜL FABRİKASI SEÇENEKLERİ (MODULE CORE UYUMLU) ───────────────────────
