@@ -55,6 +55,12 @@ export {
   type BaseChatPageProps
 } from './pages/BaseChatPage';
 
+export {
+  default as AiModelSelection,
+  type AiModelSelectionProps,
+  type AiModelConfig
+} from './pages/AiModelSelection';
+
 // Modül Fabrikası ve Örneği (@akalin/module_core uyumlu)
 export { createAiAssistantsModule } from './createAiAssistantsModule';
 import { AiAssistantsModule } from './AiAssistantsModule';
