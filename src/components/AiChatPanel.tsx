@@ -54,7 +54,7 @@ const DefaultThinkingDetails = ({ content, title }: { content: string; title: st
         {open ? '▼' : '►'} {title}
       </button>
       {open && (
-        <pre style={{ marginTop: '6px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary, #475569)', fontFamiliy: 'monospace' }}>
+        <pre style={{ marginTop: '6px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary, #475569)', fontFamily: 'monospace' }}>
           {content}
         </pre>
       )}

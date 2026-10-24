@@ -4,8 +4,7 @@
  * @akalin/ai-assistants - Tüm Yapay Zeka Asistanı ve Sohbet Modülü Tip Tanımlamaları.
  */
 
-import React, { ReactNode, ComponentType } from 'react';
-import type { IModuleDefinition } from '@akalin/module_core';
+import { ReactNode, ComponentType } from 'react';
 
 // ─── SOHBET VE OTURUM TİPLERİ ───────────────────────────────────────────────
 

@@ -15,7 +15,10 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": false,
-    "allowJs": true
+    "allowJs": true,
+    "paths": {
+      "@akalin/ui": ["../akalin-ui/src/index.ts", "../ui/src/index.ts"]
+    }
   },
   "include": ["src"]
 }
