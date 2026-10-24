@@ -24,14 +24,26 @@ export {
 } from './context/AiChatContext';
 
 // Bileşenler
-export { AiActionCard } from './components/AiActionCard';
-export { AiAssistantButton } from './components/AiAssistantButton';
-export { AiChatPanel } from './components/AiChatPanel';
+export { 
+  default as AiActionCard, 
+  AiActionCard as NamedAiActionCard 
+} from './components/AiActionCard';
+
+export { 
+  default as AiAssistantButton, 
+  AiAssistantButton as NamedAiAssistantButton 
+} from './components/AiAssistantButton';
+
+export { 
+  default as AiChatPanel, 
+  AiChatPanel as NamedAiChatPanel 
+} from './components/AiChatPanel';
 
 // Sayfalar
 export { 
   default as BaseChatPage, 
-  BaseAiChatPage 
+  BaseAiChatPage,
+  type BaseChatPageProps
 } from './pages/BaseChatPage';
 
 // Modül Fabrikası ve Örneği (@akalin/module_core uyumlu)
