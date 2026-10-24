@@ -1,0 +1,278 @@
+/**
+ * @file index.ts
+ * @description
+ * @akalin/ai-assistants - Tüm Yapay Zeka Asistanı ve Sohbet Modülü Tip Tanımlamaları.
+ */
+
+import React, { ReactNode, ComponentType } from 'react';
+import type { IModuleDefinition } from '@akalin/module_core';
+
+// ─── SOHBET VE OTURUM TİPLERİ ───────────────────────────────────────────────
+
+export interface AiSession {
+  id: number;
+  baslik: string;
+  aiAjanId?: number;
+  aiAjanAdi?: string;
+  sonAktiviteTarihi: string;
+  sonMesajOzet?: string;
+  mesajSayisi: number;
+}
+
+export interface AiMessage {
+  id: number;
+  aiSohbetOturumuId: number;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  icerik: string;
+  eylemVerisiJson?: string;
+  sayfaBaglami?: string;
+  modelBilgisi?: string;
+  islemSuresiMs?: number;
+  canliLlmMi?: boolean;
+  tarih: string;
+}
+
+export type AiPanelMode = 'docked' | 'floating' | 'collapsed';
+
+export interface AiPageContext {
+  route: string;
+  title?: string;
+  documentType?: string;
+  data?: any;
+}
+
+export interface CloudFileItem {
+  id: number;
+  dosyaAdi: string;
+  dosyaBoyutu?: number;
+  dosyaTipi?: string;
+  bulutDosyaUrl?: string;
+  provider?: string;
+  belgeNo?: string;
+  belgeTuru?: string;
+}
+
+// ─── UZMAN AJAN TİPLERİ ─────────────────────────────────────────────────────
+
+export interface AgentDefinition {
+  id?: number | string;
+  kod: string;
+  ad: string;
+  aciklama?: string;
+  sistemTalimati?: string;
+  model?: string;
+  sicaklik?: number;
+  aktif?: boolean;
+  icon?: string;
+  color?: string;
+}
+
+// ─── CONTEXT VE PROVIDER TİPLERİ ────────────────────────────────────────────
+
+export interface AiChatContextType {
+  isOpen: boolean;
+  panelMode: AiPanelMode;
+  setPanelMode: (mode: AiPanelMode) => void;
+  togglePanel: () => void;
+  openPanel: () => void;
+  closePanel: () => void;
+  sessions: AiSession[];
+  activeSessionId: number | null;
+  setActiveSessionId: (id: number | null) => void;
+  messages: AiMessage[];
+  loading: boolean;
+  isSending: boolean;
+  sendMessage: (text: string, customAgentId?: number) => Promise<void>;
+  stopGenerating: () => void;
+  createNewSession: (title?: string) => Promise<number | null>;
+  startNewSession: () => Promise<void>;
+  deleteSession: (id: number) => Promise<void>;
+  renameSession: (id: number, newTitle: string) => Promise<void>;
+  pageContext: AiPageContext;
+  setPageContext: React.Dispatch<React.SetStateAction<AiPageContext>>;
+  agents: AgentDefinition[];
+  selectedAgentId: number | null;
+  setSelectedAgentId: (id: number | null) => void;
+  refreshSessions: () => Promise<void>;
+}
+
+export interface AiChatProviderProps {
+  children: ReactNode;
+  apiEndpoint?: string;
+  adapter?: IAiChatAdapter;
+  defaultAgents?: AgentDefinition[];
+  defaultPanelMode?: AiPanelMode;
+  defaultOpen?: boolean;
+}
+
+// ─── ADAPTER TİPİ ───────────────────────────────────────────────────────────
+
+export interface IAiChatAdapter {
+  getSessions: () => Promise<AiSession[]>;
+  createSession: (title?: string, agentId?: number | null) => Promise<AiSession>;
+  getMessages: (sessionId: number) => Promise<AiMessage[]>;
+  sendMessage: (payload: {
+    oturumId: number | null;
+    mesaj: string;
+    aiAjanId?: number | null;
+    sayfaBaglami?: string;
+    eylemVerisiJson?: string;
+    dosyaIdleri?: number[];
+  }, signal?: AbortSignal) => Promise<{
+    oturumId: number;
+    mesaj: AiMessage;
+  }>;
+  deleteSession: (sessionId: number) => Promise<void>;
+  renameSession: (sessionId: number, newTitle: string) => Promise<void>;
+  getAgents?: () => Promise<AgentDefinition[]>;
+}
+
+// ─── BİLEŞEN PROP TİPLERİ ───────────────────────────────────────────────────
+
+export interface AiChatPanelProps {
+  className?: string;
+  onApplyAiData?: (data: any) => void;
+  showCloudFiles?: boolean;
+  onClose?: () => void;
+}
+
+export interface AiActionCardProps {
+  rawJson: string;
+  onApply?: (data: any) => void;
+}
+
+export interface AiAssistantButtonProps {
+  className?: string;
+  title?: string;
+  label?: string;
+  showLabel?: boolean;
+  iconSize?: number;
+  onClick?: () => void;
+  variant?: 'header' | 'floating' | 'minimal';
+}
+
+// ─── BASE CHAT PAGE TİPLERİ (TAM SAYFA GÖRÜNÜMÜ) ────────────────────────────
+
+export interface ChatAttachment {
+  id?: string | number;
+  name: string;
+  size?: number;
+  type?: string;
+  url?: string;
+  file?: File;
+  cloudFileId?: number | string;
+}
+
+export interface ChatMessage {
+  id: string | number;
+  sender: 'user' | 'assistant' | 'system';
+  text: string;
+  timestamp?: string;
+  status?: 'sending' | 'sent' | 'error' | 'streaming';
+  isStreaming?: boolean;
+  tokens?: number;
+  model?: string;
+  durationMs?: number;
+  thinkingContent?: string;
+  feedback?: 'like' | 'dislike' | null;
+  attachments?: ChatAttachment[];
+  actionPayload?: any;
+  customData?: Record<string, any>;
+}
+
+export interface ChatSession {
+  id: string | number;
+  title: string;
+  createdAt: string;
+  updatedAt?: string;
+  messageCount?: number;
+  agentId?: string | number;
+  pinned?: boolean;
+}
+
+export interface ChatAgent {
+  id: string | number;
+  name: string;
+  description?: string;
+  avatar?: string;
+  icon?: ReactNode;
+  systemPrompt?: string;
+  model?: string;
+  temperature?: number;
+  category?: string;
+}
+
+export interface PromptSuggestion {
+  id?: string | number;
+  title: string;
+  prompt: string;
+  category?: string;
+  icon?: ReactNode;
+}
+
+// ─── MODÜL FABRİKASI SEÇENEKLERİ (MODULE CORE UYUMLU) ───────────────────────
+
+export interface CreateAiAssistantsModuleOptions {
+  id?: string;
+  title?: string;
+  name?: string;
+  description?: string;
+  version?: string;
+  permissionPrefix?: string;
+  baseRoute?: string;
+  routeTitle?: string;
+  order?: number;
+  isCore?: boolean;
+  defaultActive?: boolean;
+  showInMenu?: boolean;
+  menuLabel?: string;
+  requiredPermissions?: string[];
+  apiEndpoint?: string;
+  adapter?: IAiChatAdapter;
+  defaultAgents?: AgentDefinition[];
+  enableHeaderButton?: boolean;
+}
+
+export interface AiAssistantsModuleDefinition {
+  id: string;
+  title: string;
+  name: string;
+  description?: string;
+  version?: string;
+  permissionPrefix?: string;
+  icon?: ReactNode;
+  iconName?: string;
+  order?: number;
+  isCore?: boolean;
+  defaultActive?: boolean;
+  routes: Array<{
+    path: string;
+    element: ReactNode;
+    title?: string;
+    requiredPermissions?: string[];
+  }>;
+  menuItems: Array<{
+    id: string;
+    label: string;
+    path?: string;
+    icon?: ReactNode;
+    order?: number;
+    requiredPermissions?: string[];
+  }>;
+  components: {
+    AiChatPanel: ComponentType<AiChatPanelProps>;
+    AiChatProvider: ComponentType<AiChatProviderProps>;
+    AiAssistantButton: ComponentType<AiAssistantButtonProps>;
+    AiActionCard: ComponentType<AiActionCardProps>;
+    BaseChatPage: ComponentType<any>;
+    BaseAiChatPage: ComponentType<any>;
+    [key: string]: ComponentType<any>;
+  };
+  actions?: Array<{
+    id: string;
+    type: string;
+    label: string;
+    icon?: ReactNode;
+    component?: ComponentType<any>;
+  }>;
+}
