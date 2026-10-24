@@ -39,6 +39,15 @@ export {
   AiChatPanel as NamedAiChatPanel 
 } from './components/AiChatPanel';
 
+export { 
+  default as AiMarkdownContent, 
+  AiMarkdownContent as NamedAiMarkdownContent,
+  CodeBlockView,
+  renderInlineMarkdown,
+  renderMarkdownBlocks,
+  type AiMarkdownContentProps
+} from './components/AiMarkdownContent';
+
 // Sayfalar
 export { 
   default as BaseChatPage, 

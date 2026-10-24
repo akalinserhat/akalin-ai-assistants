@@ -2,5 +2,6 @@
  * @akalin/ai-assistants - Ana Stil Dosyası
  */
 
+@import './MarkdownContent.css';
 @import './AiChatPanel.css';
 @import './BaseChatPage.css';

@@ -1,6 +1,6 @@
-/* Akalin AI Assistants - Chat Panel & Header Styles */
+@import './MarkdownContent.css';
 
-   ============================================================================ */
+/* ============================================================================ */
 .ai-chat-panel {
   display: flex;
   flex-direction: column;
@@ -901,7 +901,30 @@
   justify-content: center;
   width: 32px;
   height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
+.ai-btn-input-action:hover {
+  color: var(--accent-primary, #6366f1);
+  background: var(--accent-light, rgba(99, 102, 241, 0.08));
+}
+
+[data-theme='dark'] .ai-btn-input-action:hover,
+.dark .ai-btn-input-action:hover {
+  color: var(--accent-primary, #6b7aec);
+  background: var(--accent-light, rgba(107, 122, 236, 0.15));
+}
+
+.ai-btn-input-action.listening {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  animation: pulse 1.5s infinite;
+}
 
 /* AI Header Button Styles */
 /* Header'daki AI Asistan Düğmesi */

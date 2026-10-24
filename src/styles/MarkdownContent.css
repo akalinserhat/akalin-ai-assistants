@@ -1,0 +1,313 @@
+/**
+ * @file MarkdownContent.css
+ * @description
+ * @akalin/ai-assistants - Zengin Markdown, Tablo ve Kod Bloğu Ortak Stilleri.
+ * Hem BaseChatPage hem de AiChatPanel (çekmece) içerisinde tabloların ve biçimlendirmenin
+ * modern, Material Design 3 / Akalin UI temasıyla uyumlu ve şık görünmesini sağlar.
+ */
+
+/* Formatlanmış Metin Kapsayıcısı */
+.ai-chat-formatted-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: inherit;
+  word-break: break-word;
+}
+
+.ai-chat-markdown-block {
+  margin: 4px 0;
+}
+
+.ai-chat-markdown-block:first-child {
+  margin-top: 0;
+}
+
+.ai-chat-markdown-block:last-child {
+  margin-bottom: 0;
+}
+
+/* ─── TABLO TASARIMI (RESPONSIVE & MODERN) ─────────────────────────────────── */
+
+.ai-chat-table-wrapper {
+  overflow-x: auto;
+  margin: 12px 0;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-secondary, #ffffff);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  max-width: 100%;
+}
+
+.ai-chat-table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.ai-chat-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-chat-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.ai-chat-markdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.ai-chat-markdown-table th {
+  background: var(--bg-tertiary, #f8fafc);
+  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  padding: 9px 13px;
+  border-bottom: 1.5px solid var(--border-color, #e2e8f0);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.ai-chat-markdown-table td {
+  padding: 8px 13px;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.05));
+  color: var(--text-secondary, #334155);
+  font-size: 12.5px;
+}
+
+.ai-chat-markdown-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ai-chat-markdown-table tbody tr:nth-child(even) {
+  background: var(--table-row-even, rgba(0, 0, 0, 0.015));
+}
+
+.ai-chat-markdown-table tbody tr:hover {
+  background: var(--hover-bg, rgba(99, 102, 241, 0.04));
+}
+
+/* Koyu Tema Tablo Uyarlaması */
+[data-theme='dark'] .ai-chat-table-wrapper,
+.dark .ai-chat-table-wrapper {
+  background: var(--surface-card, #171720);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme='dark'] .ai-chat-table-wrapper::-webkit-scrollbar-thumb,
+.dark .ai-chat-table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme='dark'] .ai-chat-markdown-table th,
+.dark .ai-chat-markdown-table th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary, #f8fafc);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .ai-chat-markdown-table td,
+.dark .ai-chat-markdown-table td {
+  color: var(--text-secondary, #cbd5e1);
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme='dark'] .ai-chat-markdown-table tbody tr:nth-child(even),
+.dark .ai-chat-markdown-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme='dark'] .ai-chat-markdown-table tbody tr:hover,
+.dark .ai-chat-markdown-table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+/* ─── KOD BLOKLARI (SYNTAX & KOPYALAMA) ─────────────────────────────────────── */
+
+.ai-chat-code-block-container {
+  margin: 10px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1e1e2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ai-chat-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  color: #a6adc8;
+  font-family: monospace;
+}
+
+.ai-chat-code-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #a6adc8;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.ai-chat-code-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.ai-chat-code-pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: #cdd6f4;
+  line-height: 1.5;
+}
+
+.ai-chat-inline-code {
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--accent-primary, #6366f1);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+[data-theme='dark'] .ai-chat-inline-code,
+.dark .ai-chat-inline-code {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* ─── METİN BAŞLIKLARI, LİSTELER, ALINTILAR VE LİNKLER ─────────────────────── */
+
+.ai-chat-heading-1 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 12px 0 6px;
+  color: var(--text-primary);
+}
+
+.ai-chat-heading-2 {
+  font-size: 14.5px;
+  font-weight: 600;
+  margin: 10px 0 5px;
+  color: var(--text-primary);
+}
+
+.ai-chat-heading-3 {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  color: var(--text-primary);
+}
+
+.ai-chat-paragraph {
+  margin: 6px 0;
+  line-height: 1.55;
+}
+
+.ai-chat-paragraph:first-child {
+  margin-top: 0;
+}
+
+.ai-chat-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.ai-chat-list,
+.ai-chat-ordered-list {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.ai-chat-list li,
+.ai-chat-ordered-list li {
+  margin: 3px 0;
+  line-height: 1.5;
+}
+
+.ai-chat-blockquote {
+  margin: 8px 0;
+  padding: 6px 12px;
+  border-left: 3px solid var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.04);
+  border-radius: 0 6px 6px 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.ai-chat-spacer {
+  height: 6px;
+}
+
+.ai-chat-link {
+  color: var(--accent-primary, #6366f1);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.ai-chat-link:hover {
+  color: var(--accent-hover, #4f46e5);
+  opacity: 0.9;
+}
+
+.ai-chat-inline-image-wrapper {
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 2px 4px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.1));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-chat-inline-image-wrapper:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.ai-chat-inline-image {
+  display: block;
+  max-height: 120px;
+  max-width: 200px;
+  object-fit: cover;
+}
+
+.ai-chat-image-card {
+  margin: 8px 0;
+}
+
+.ai-chat-image {
+  display: block;
+  max-width: 100%;
+  max-height: 380px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ai-chat-image-caption {
+  font-size: 11px;
+  color: var(--text-secondary, #6b7280);
+  font-style: italic;
+  display: block;
+  margin-top: 4px;
+}

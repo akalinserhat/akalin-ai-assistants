@@ -15,6 +15,8 @@ import {
 import { useAiChat } from '../context/AiChatContext';
 import { AiChatPanelProps, CloudFileItem } from '../types';
 import { AiActionCard } from './AiActionCard';
+import { AiMarkdownContent } from './AiMarkdownContent';
+import '../styles/AiChatPanel.css';
 
 // ─── AKALIN UI ENTEGRASYONU VE GÜVENLİ FALLBACK'LER ─────────────────────────
 
@@ -540,7 +542,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
               <div className="ai-message-content-group">
                 <div className={`ai-message-bubble ${m.role === 'user' ? 'ai-bubble-user' : 'ai-bubble-assistant'}`}>
                   <div className="ai-message-text">
-                    {cleanText}
+                    <AiMarkdownContent content={cleanText} baseKey={m.id} />
                   </div>
 
                   {m.role === 'assistant' && (
