@@ -98,7 +98,42 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
         const res = await axios.get(ajanlarUrl, {
           headers: getAuthHeaders()
         });
-        return Array.isArray(res.data) ? res.data : [];
+        const list = Array.isArray(res.data) ? res.data : [];
+        return list.map((a: any) => {
+          let istekler: any[] = [];
+          if (Array.isArray(a.hizliIstekler) && a.hizliIstekler.length > 0) {
+            istekler = a.hizliIstekler;
+          } else if (a.hizliIsteklerJson) {
+            try {
+              istekler = JSON.parse(a.hizliIsteklerJson);
+            } catch {
+              istekler = [];
+            }
+          }
+          return {
+            id: a.id,
+            kod: a.kod,
+            ad: a.ad,
+            aciklama: a.aciklama,
+            sistemTalimati: a.sistemIstemi || a.sistemTalimati,
+            model: a.modelAdi || a.model,
+            sicaklik: a.sicaklik,
+            aktif: a.aktifMi ?? a.aktif ?? true,
+            icon: a.ikon || a.icon,
+            color: a.renk || a.color,
+            hizliIstekler: Array.isArray(istekler) ? istekler.map((item: any) => ({
+              id: item.id || item.Id,
+              baslik: item.baslik || item.Baslik || '',
+              prompt: item.prompt ?? item.Prompt ?? '',
+              ikon: item.ikon || item.Ikon || 'Sparkles',
+              uiAksiyonu: item.uiAksiyonu || item.UiAksiyonu || 'YOK',
+              uiParametreleriJson: item.uiParametreleriJson || item.UiParametreleriJson,
+              sira: item.sira ?? item.Sira ?? 1,
+              aktifMi: item.aktifMi ?? item.AktifMi ?? true
+            })) : [],
+            hizliIsteklerJson: a.hizliIsteklerJson
+          };
+        });
       } catch {
         return [];
       }

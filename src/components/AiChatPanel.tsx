@@ -10,13 +10,32 @@ import toast from 'react-hot-toast';
 import { 
   Bot, Sparkles, X, Plus, Trash2, Edit3, Check, MessageSquare, 
   Send, Mic, MicOff, Layers, Maximize2, Compass, Sparkle, Paperclip,
-  Square
+  Square, FileSpreadsheet, FileText, FolderOpen, Package, Users, 
+  TrendingUp, AlertCircle, Receipt, Tag
 } from 'lucide-react';
-import { useAiChat } from '../context/AiChatContext';
-import { AiChatPanelProps, CloudFileItem } from '../types';
+import { useAiChat, matchAgentForRoute } from '../context/AiChatContext';
+import { AiChatPanelProps, CloudFileItem, AgentHizliIstek } from '../types';
 import { AiActionCard } from './AiActionCard';
 import { AiMarkdownContent } from './AiMarkdownContent';
 import '../styles/AiChatPanel.css';
+
+const renderHizliIstekIcon = (iconName?: string) => {
+  switch (iconName) {
+    case 'FileSpreadsheet': return <FileSpreadsheet size={13} />;
+    case 'FileText': return <FileText size={13} />;
+    case 'FolderOpen': return <FolderOpen size={13} />;
+    case 'Package': return <Package size={13} />;
+    case 'Users': return <Users size={13} />;
+    case 'TrendingUp': return <TrendingUp size={13} />;
+    case 'AlertCircle': return <AlertCircle size={13} />;
+    case 'Receipt': return <Receipt size={13} />;
+    case 'Tag': return <Tag size={13} />;
+    case 'Sparkle':
+    case 'Sparkles':
+    default:
+      return <Sparkles size={13} />;
+  }
+};
 
 // ─── AKALIN UI ENTEGRASYONU VE GÜVENLİ FALLBACK'LER ─────────────────────────
 
@@ -198,10 +217,15 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
   const currentAgent = useMemo(() => {
     if (selectedAgentId && Array.isArray(agents)) {
-      return agents.find(a => a.id === selectedAgentId);
+      const found = agents.find(a => Number(a.id) === Number(selectedAgentId));
+      if (found) return found;
+    }
+    if (pageContext?.route && Array.isArray(agents) && agents.length > 0) {
+      const routeMatched = matchAgentForRoute(pageContext.route, agents);
+      if (routeMatched) return routeMatched;
     }
     return agents && agents.length > 0 ? agents[0] : null;
-  }, [selectedAgentId, agents]);
+  }, [selectedAgentId, agents, pageContext?.route]);
 
   // Otomatik alta kaydır
   useEffect(() => {
@@ -306,12 +330,48 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     }
   };
 
-  const quickSuggestions = [
-    t('Bugünkü satış cirosu ve sipariş özeti'),
-    t('Bu sayfadaki verileri analiz et'),
-    t('Seçili cariye özel fiyat listesi hazırla'),
-    t('Kritik stok seviyesindeki ürünleri listele')
-  ];
+  const activeHizliIstekler = useMemo<AgentHizliIstek[]>(() => {
+    const rawList = currentAgent?.hizliIstekler;
+    if (!Array.isArray(rawList) || rawList.length === 0) return [];
+    return rawList
+      .filter((item: AgentHizliIstek) => item.aktifMi !== false)
+      .sort((a: AgentHizliIstek, b: AgentHizliIstek) => (a.sira || 0) - (b.sira || 0));
+  }, [currentAgent]);
+
+  const defaultSuggestions = useMemo<AgentHizliIstek[]>(() => [
+    { id: 'def_1', baslik: t('Bugünkü satış cirosu ve sipariş özeti'), prompt: t('Bugünkü satış cirosu ve sipariş özeti'), ikon: 'TrendingUp', uiAksiyonu: 'YOK' },
+    { id: 'def_2', baslik: t('Bu sayfadaki verileri analiz et'), prompt: t('Bu sayfadaki verileri analiz et'), ikon: 'Sparkles', uiAksiyonu: 'YOK' },
+    { id: 'def_3', baslik: t('Seçili cariye özel fiyat listesi hazırla'), prompt: t('Seçili cariye özel fiyat listesi hazırla'), ikon: 'Tag', uiAksiyonu: 'YOK' },
+    { id: 'def_4', baslik: t('Kritik stok seviyesindeki ürünleri listele'), prompt: t('Kritik stok seviyesindeki ürünleri listele'), ikon: 'Package', uiAksiyonu: 'YOK' }
+  ], [t]);
+
+  const displaySuggestions = activeHizliIstekler.length > 0 ? activeHizliIstekler : defaultSuggestions;
+
+  const handleHizliIstekClick = async (item: AgentHizliIstek) => {
+    if (isSending) return;
+
+    // 1. UI Aksiyonu varsa tetikle
+    if (item.uiAksiyonu && item.uiAksiyonu !== 'YOK') {
+      if (item.uiAksiyonu === 'BULUT_DOSYA_SEC') {
+        setIsCloudPickerOpen(true);
+      } else {
+        const currentRoute = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
+        window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
+          detail: {
+            action: item.uiAksiyonu,
+            route: currentRoute,
+            params: item.uiParametreleriJson
+          }
+        }));
+      }
+    }
+
+    // 2. Prompt veya başlık varsa mesaj gönder
+    const textToSend = (item.prompt || item.baslik || '').trim();
+    if (textToSend) {
+      await sendMessage(textToSend);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -482,26 +542,32 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
               <Bot size={30} />
             </div>
             <h3 className="ai-chat-welcome-title">
-              {t('Webakus ERP Asistanı')}
+              {currentAgent?.ad || t('Webakus ERP Asistanı')}
             </h3>
             <p className="ai-chat-welcome-desc">
-              {t('Finans, stok, cari analizleri yapabilir, belge taslakları oluşturabilir ve sistem üzerinde hızlı eylemler gerçekleştirebilirim.')}
+              {currentAgent?.aciklama || t('Finans, stok, cari analizleri yapabilir, belge taslakları oluşturabilir ve sistem üzerinde hızlı eylemler gerçekleştirebilirim.')}
             </p>
 
             <div className="ai-chat-suggestions">
               <span className="ai-suggestions-title">{t('Hızlı ERP İstekleri:')}</span>
               <div className="ai-suggestions-grid">
-                {quickSuggestions.map((sug, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className="ai-suggestion-chip"
-                    onClick={() => sendMessage(sug)}
-                  >
-                    <Sparkle size={13} />
-                    <span>{sug}</span>
-                  </button>
-                ))}
+                {displaySuggestions.map((item, idx) => {
+                  const baslik = item.baslik;
+                  const prompt = item.prompt || item.baslik;
+                  const ikon = item.ikon;
+                  return (
+                    <button
+                      key={item.id || idx}
+                      type="button"
+                      className="ai-suggestion-chip"
+                      onClick={() => handleHizliIstekClick(item)}
+                      title={prompt !== baslik ? prompt : baslik}
+                    >
+                      {renderHizliIstekIcon(ikon)}
+                      <span>{baslik}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

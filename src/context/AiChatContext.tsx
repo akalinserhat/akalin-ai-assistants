@@ -257,17 +257,25 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
     }
   }, []);
 
-  // İlk açılışta oturumları ve ajanları getir
-  useEffect(() => {
-    refreshSessions();
+  // Ajanları API'den çek ve güncelle
+  const refreshAgents = useCallback(async () => {
     if (adapterRef.current.getAgents) {
-      adapterRef.current.getAgents().then(fetchedAgents => {
+      try {
+        const fetchedAgents = await adapterRef.current.getAgents();
         if (fetchedAgents && fetchedAgents.length > 0) {
           setAgents(fetchedAgents);
         }
-      }).catch(() => {});
+      } catch {
+        // Sessiz fallback
+      }
     }
-  }, [refreshSessions]);
+  }, []);
+
+  // İlk açılışta oturumları ve ajanları getir
+  useEffect(() => {
+    refreshSessions();
+    refreshAgents();
+  }, [refreshSessions, refreshAgents]);
 
   // Aktif oturum değiştiğinde mesajları getir
   useEffect(() => {
@@ -313,16 +321,20 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
       if (typeof window !== 'undefined') {
         localStorage.setItem('webakus_ai_panel_open', String(next));
       }
+      if (next) {
+        refreshAgents();
+      }
       return next;
     });
-  }, []);
+  }, [refreshAgents]);
 
   const openPanel = useCallback(() => {
     setIsOpen(true);
     if (typeof window !== 'undefined') {
       localStorage.setItem('webakus_ai_panel_open', 'true');
     }
-  }, []);
+    refreshAgents();
+  }, [refreshAgents]);
 
   const closePanel = useCallback(() => {
     setIsOpen(false);
@@ -503,7 +515,8 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
         agents,
         selectedAgentId,
         setSelectedAgentId,
-        refreshSessions
+        refreshSessions,
+        refreshAgents
       }}
     >
       {children}

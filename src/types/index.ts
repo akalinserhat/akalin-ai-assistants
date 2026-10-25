@@ -53,6 +53,17 @@ export interface CloudFileItem {
 
 // ─── UZMAN AJAN TİPLERİ ─────────────────────────────────────────────────────
 
+export interface AgentHizliIstek {
+  id?: string;
+  baslik: string;
+  prompt?: string;
+  ikon?: string;
+  uiAksiyonu?: string;
+  uiParametreleriJson?: string;
+  sira?: number;
+  aktifMi?: boolean;
+}
+
 export interface AgentDefinition {
   id?: number | string;
   kod: string;
@@ -64,6 +75,8 @@ export interface AgentDefinition {
   aktif?: boolean;
   icon?: string;
   color?: string;
+  hizliIstekler?: AgentHizliIstek[];
+  hizliIsteklerJson?: string;
 }
 
 // ─── CONTEXT VE PROVIDER TİPLERİ ────────────────────────────────────────────
@@ -93,6 +106,7 @@ export interface AiChatContextType {
   selectedAgentId: number | null;
   setSelectedAgentId: (id: number | null) => void;
   refreshSessions: () => Promise<void>;
+  refreshAgents: () => Promise<void>;
 }
 
 export interface AiChatProviderProps {
