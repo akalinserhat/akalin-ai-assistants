@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, ArrowRight, CheckCircle2, ShoppingCart, Tag, ExternalLink } from 'lucide-react';
+import { FileText, ArrowRight, CheckCircle2, ShoppingCart, Tag, ExternalLink, FileSpreadsheet, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AiActionCardProps } from '../types';
 
@@ -37,15 +37,32 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply }) 
 
   if (!data || typeof data !== 'object') return null;
 
-  const eylemTipi = data.eylemTipi || data.actionType || 'BELGE_DOLDUR';
+  const eylemTipi = data.eylemTipi || data.actionType || data.action || 'BELGE_DOLDUR';
   const belgeTuru = data.belgeTuru || data.documentType || 'Belge';
-  const targetUrl = data.yonlendirmeUrl || data.targetUrl || getDefaultRoute(belgeTuru);
+  const isExcelImport = eylemTipi === 'EXCEL_IMPORT' || data.action === 'EXCEL_IMPORT';
+  const isWaiting = data.durum === 'KULLANICI_BEKLENIYOR' || isExcelImport || eylemTipi === 'DOSYA_BEKLENIYOR' || eylemTipi === 'KULLANICI_BEKLENIYOR';
+  const defaultRoute = isExcelImport 
+    ? (belgeTuru.toLowerCase().includes('kampanya') ? '/kampanyalar/yeni/excel-import' : '/fiyat-listeleri/yeni/excel-import')
+    : getDefaultRoute(belgeTuru);
+  const targetUrl = data.yonlendirmeUrl || data.targetUrl || defaultRoute;
   const kalemSayisi = data.kalemler?.length || data.items?.length || 0;
   const kampanyaSayisi = data.kampanyalar?.length || data.content?.details?.length || 0;
   const isNavigation = eylemTipi === 'SAYFAYA_GIT' || eylemTipi === 'NAVIGASYON';
 
   const handleApply = () => {
-    if (isNavigation && targetUrl) {
+    if (isExcelImport) {
+      window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
+        detail: {
+          action: 'EXCEL_IMPORT',
+          route: targetUrl,
+          params: data.parametreler || data.uiParametreleriJson
+        }
+      }));
+      if (targetUrl) {
+        navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
+      }
+      toast.success(data.basariMesaji || 'Excel içe aktarım ekranı açılıyor...');
+    } else if (isNavigation && targetUrl) {
       navigate(targetUrl);
       toast.success(`${belgeTuru || 'İlgili'} sayfasına geçiş yapıldı.`);
     } else if (onApply) {
@@ -58,12 +75,20 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply }) 
     }
   };
 
+  const getHeaderIcon = () => {
+    if (isExcelImport) return <FileSpreadsheet size={16} color="var(--accent-primary, #6366f1)" />;
+    if (isNavigation) return <ExternalLink size={16} />;
+    return <FileText size={16} />;
+  };
+
+  const badgeText = data.durum === 'KULLANICI_BEKLENIYOR' ? 'KULLANICI BEKLENİYOR' : (data.badge || eylemTipi);
+
   return (
     <div style={{
       marginTop: '12px',
       padding: '12px',
       borderRadius: '8px',
-      border: '1px solid var(--border-color, #e2e8f0)',
+      border: isWaiting ? '1px solid var(--accent-primary, rgba(99, 102, 241, 0.4))' : '1px solid var(--border-color, #e2e8f0)',
       background: 'var(--bg-secondary, #f8fafc)',
       display: 'flex',
       flexDirection: 'column',
@@ -71,18 +96,18 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply }) 
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: 'var(--text-primary, #0f172a)' }}>
-          {isNavigation ? <ExternalLink size={16} /> : <FileText size={16} />}
-          <span>{data.baslik || data.title || `${belgeTuru} Taslağı`}</span>
+          {getHeaderIcon()}
+          <span>{data.baslik || data.title || (isExcelImport ? 'Excel / Belge İçe Aktarımı Bekleniyor' : `${belgeTuru} Taslağı`)}</span>
         </div>
         <span style={{
           fontSize: '11px',
           padding: '2px 8px',
           borderRadius: '999px',
-          background: 'var(--primary-color-10, rgba(59, 130, 246, 0.1))',
-          color: 'var(--primary-color, #3b82f6)',
+          background: isWaiting ? 'rgba(99, 102, 241, 0.12)' : 'var(--primary-color-10, rgba(59, 130, 246, 0.1))',
+          color: isWaiting ? 'var(--accent-primary, #6366f1)' : 'var(--primary-color, #3b82f6)',
           fontWeight: 600
         }}>
-          {eylemTipi}
+          {badgeText}
         </span>
       </div>
 
@@ -90,6 +115,19 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply }) 
         <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary, #64748b)', lineHeight: '1.4' }}>
           {data.ozet || data.summary || data.aciklama}
         </p>
+      )}
+
+      {/* Hareketli Bekleme İlerleme Çubuğu (Animated Progress Bar) */}
+      {isWaiting && (
+        <div className="ai-action-card-progress">
+          <div className="ai-action-card-progress-track">
+            <div className="ai-action-card-progress-bar-moving" />
+          </div>
+          <div className="ai-action-card-progress-status">
+            <span className="ai-pulse-dot" />
+            <span>{data.beklemeMetni || 'Kullanıcının dosya seçimi / içe aktarımı bekleniyor...'}</span>
+          </div>
+        </div>
       )}
 
       {kalemSayisi > 0 && (
@@ -114,25 +152,32 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply }) 
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            padding: '6px 12px',
-            fontSize: '12px',
-            fontWeight: 500,
+            padding: '7px 14px',
+            fontSize: '12.5px',
+            fontWeight: 600,
             borderRadius: '6px',
-            backgroundColor: 'var(--primary-color, #3b82f6)',
+            backgroundColor: isExcelImport ? 'var(--accent-primary, #6366f1)' : 'var(--primary-color, #3b82f6)',
             color: '#fff',
             border: 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)'
           }}
         >
-          {isNavigation ? (
+          {isExcelImport ? (
             <>
-              <span>Sayfaya Git</span>
+              <FileSpreadsheet size={14} />
+              <span>{data.butonYazisi || 'Excel İçe Aktarımı Aç ve Dosya Seç'}</span>
+            </>
+          ) : isNavigation ? (
+            <>
+              <span>{data.butonYazisi || 'Sayfaya Git'}</span>
               <ArrowRight size={13} />
             </>
           ) : (
             <>
               <CheckCircle2 size={13} />
-              <span>Forma Aktar</span>
+              <span>{data.butonYazisi || 'Forma Aktar'}</span>
             </>
           )}
         </button>
