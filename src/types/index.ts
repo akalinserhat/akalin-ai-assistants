@@ -46,6 +46,7 @@ export interface CloudFileItem {
   dosyaBoyutu?: number;
   dosyaTipi?: string;
   bulutDosyaUrl?: string;
+  url?: string;
   provider?: string;
   belgeNo?: string;
   belgeTuru?: string;
@@ -53,16 +54,28 @@ export interface CloudFileItem {
 
 // ─── UZMAN AJAN TİPLERİ ─────────────────────────────────────────────────────
 
+export type AiHizliIstekUiAksiyonu =
+  | 'YOK'
+  | 'BULUT_DOSYA_SEC'
+  | 'METIN_YAPISTIR_MODAL'
+  | 'EXCEL_IMPORT'
+  | 'CARI_SEC'
+  | 'URUN_SEC'
+  | 'OZEL_ROTA'
+  | string;
+
 export interface AgentHizliIstek {
   id?: string;
   baslik: string;
   prompt?: string;
   ikon?: string;
-  uiAksiyonu?: string;
+  uiAksiyonu?: AiHizliIstekUiAksiyonu;
   uiParametreleriJson?: string;
   sira?: number;
   aktifMi?: boolean;
 }
+
+export type AiHizliIstek = AgentHizliIstek;
 
 export interface AgentDefinition {
   id?: number | string;
@@ -241,6 +254,8 @@ export interface ChatAgent {
   temperature?: number;
   category?: string;
   isLocal?: boolean;
+  hizliIstekler?: AgentHizliIstek[];
+  hizliIsteklerJson?: string;
 }
 
 export interface PromptSuggestion {
@@ -250,6 +265,12 @@ export interface PromptSuggestion {
   icon?: ReactNode;
   category?: string;
   description?: string;
+  baslik?: string;
+  ikon?: string;
+  uiAksiyonu?: AiHizliIstekUiAksiyonu;
+  uiParametreleriJson?: string;
+  sira?: number;
+  aktifMi?: boolean;
 }
 
 // ─── MODÜL FABRİKASI SEÇENEKLERİ (MODULE CORE UYUMLU) ───────────────────────

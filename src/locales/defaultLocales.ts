@@ -28,7 +28,14 @@ export const AI_ASSISTANTS_LOCALES = {
     'ai_oturum_silindi': 'Sohbet oturumu silindi.',
     'ai_baslik_guncellendi': 'Sohbet başlığı güncellendi.',
     'ai_yeni_sohbet_baslatildi': 'Yeni sohbet başlatıldı.',
-    'ai_asistan_tooltip': 'Webakus Yapay Zeka Asistanı'
+    'ai_asistan_tooltip': 'Webakus Yapay Zeka Asistanı',
+    'Metin İçeriği Girin': 'Metin İçeriği Girin',
+    'İptal': 'İptal',
+    'Analiz Et ve Belge Oluştur': 'Analiz Et ve Belge Oluştur',
+    'Kapat': 'Kapat',
+    'Dosya': 'Dosya',
+    'Kampanya metnini, fiyat listesini veya belge metnini buraya yapıştırın...': 'Kampanya metnini, fiyat listesini veya belge metnini buraya yapıştırın...',
+    'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.': 'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.'
   },
   en: {
     'ai_asistan_baslik': 'AI Assistant',
@@ -53,6 +60,13 @@ export const AI_ASSISTANTS_LOCALES = {
     'ai_oturum_silindi': 'Chat session deleted.',
     'ai_baslik_guncellendi': 'Chat title updated.',
     'ai_yeni_sohbet_baslatildi': 'New chat started.',
-    'ai_asistan_tooltip': 'Webakus AI Assistant'
+    'ai_asistan_tooltip': 'Webakus AI Assistant',
+    'Metin İçeriği Girin': 'Enter Text Content',
+    'İptal': 'Cancel',
+    'Analiz Et ve Belge Oluştur': 'Analyze and Create Document',
+    'Kapat': 'Close',
+    'Dosya': 'File',
+    'Kampanya metnini, fiyat listesini veya belge metnini buraya yapıştırın...': 'Paste campaign text, price list, or document text here...',
+    'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.': 'Paste the campaign text, price list, or document content you want analyzed and converted into a document below.'
   }
 };

@@ -7,10 +7,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { 
-  Bot, Sparkles, X, Plus, Trash2, Edit3, Check, MessageSquare, 
+import {
+  Bot, Sparkles, X, Plus, Trash2, Edit3, Check, MessageSquare,
   Send, Mic, MicOff, Layers, Maximize2, Compass, Sparkle, Paperclip,
-  Square, FileSpreadsheet, FileText, FolderOpen, Package, Users, 
+  Square, FileSpreadsheet, FileText, FolderOpen, Package, Users,
   TrendingUp, AlertCircle, Receipt, Tag
 } from 'lucide-react';
 import { useAiChat, matchAgentForRoute } from '../context/AiChatContext';
@@ -56,26 +56,26 @@ try {
 }
 
 const DefaultTypingIndicator = () => (
-  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 12px', background: 'var(--bg-secondary, #f1f5f9)', borderRadius: '16px' }}>
-    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-color, #3b82f6)', animation: 'pulse 1s infinite' }} />
-    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-color, #3b82f6)', animation: 'pulse 1s infinite 0.2s' }} />
-    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-color, #3b82f6)', animation: 'pulse 1s infinite 0.4s' }} />
+  <div className="ai-default-typing">
+    <span className="ai-default-typing-dot" />
+    <span className="ai-default-typing-dot ai-default-typing-dot-2" />
+    <span className="ai-default-typing-dot ai-default-typing-dot-3" />
   </div>
 );
 
 const DefaultThinkingDetails = ({ content, title }: { content: string; title: string }) => {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginTop: '8px', border: '1px dashed var(--border-color, #cbd5e1)', borderRadius: '6px', padding: '8px', fontSize: '12px' }}>
-      <button 
-        type="button" 
+    <div className="ai-default-thinking">
+      <button
+        type="button"
         onClick={() => setOpen(!open)}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'var(--text-secondary, #64748b)' }}
+        className="ai-default-thinking-btn"
       >
         {open ? '▼' : '►'} {title}
       </button>
       {open && (
-        <pre style={{ marginTop: '6px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary, #475569)', fontFamily: 'monospace' }}>
+        <pre className="ai-default-thinking-pre">
           {content}
         </pre>
       )}
@@ -87,7 +87,7 @@ const DefaultThinkingDetails = ({ content, title }: { content: string; title: st
 
 const resolveRouteToDocContext = (pathname: string) => {
   const cleanPath = (pathname || '').split('?')[0].toLowerCase();
-  
+
   if (cleanPath.startsWith('/siparisler/alinan')) {
     const idMatch = cleanPath.match(/\/siparisler\/alinan\/(\d+)/);
     return {
@@ -153,8 +153,8 @@ const resolveRouteToDocContext = (pathname: string) => {
 
 // ─── ANA BİLEŞEN ────────────────────────────────────────────────────────────
 
-export const AiChatPanel: React.FC<AiChatPanelProps> = ({ 
-  className = '', 
+export const AiChatPanel: React.FC<AiChatPanelProps> = ({
+  className = '',
   onApplyAiData,
   showCloudFiles = true,
   onClose
@@ -188,6 +188,9 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<CloudFileItem[]>([]);
   const [isCloudPickerOpen, setIsCloudPickerOpen] = useState<boolean>(false);
+  const [pendingHizliIstek, setPendingHizliIstek] = useState<AgentHizliIstek | null>(null);
+  const [isTextModalOpen, setIsTextModalOpen] = useState<boolean>(false);
+  const [modalInputText, setModalInputText] = useState<string>('');
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -207,7 +210,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       if (timer) clearInterval(timer);
     };
   }, [isSending]);
-  
+
   const docContext = useMemo(() => {
     const path = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
     return resolveRouteToDocContext(path);
@@ -286,7 +289,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
   const handleSend = async () => {
     if ((!inputPrompt.trim() && attachedFiles.length === 0) || isSending) return;
-    
+
     let textToSend = inputPrompt.trim();
     if (attachedFiles.length > 0) {
       const fileTags = attachedFiles.map(f => `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.id}, Tür: ${f.dosyaTipi || 'Belge'})]`).join('\n');
@@ -350,27 +353,49 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const handleHizliIstekClick = async (item: AgentHizliIstek) => {
     if (isSending) return;
 
-    // 1. UI Aksiyonu varsa tetikle
-    if (item.uiAksiyonu && item.uiAksiyonu !== 'YOK') {
-      if (item.uiAksiyonu === 'BULUT_DOSYA_SEC') {
-        setIsCloudPickerOpen(true);
-      } else {
-        const currentRoute = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
-        window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
-          detail: {
-            action: item.uiAksiyonu,
-            route: currentRoute,
-            params: item.uiParametreleriJson
-          }
-        }));
-      }
+    if (item.uiAksiyonu === 'BULUT_DOSYA_SEC') {
+      setPendingHizliIstek(item);
+      setIsCloudPickerOpen(true);
+      return;
     }
 
-    // 2. Prompt veya başlık varsa mesaj gönder
+    if (item.uiAksiyonu === 'METIN_YAPISTIR_MODAL') {
+      setPendingHizliIstek(item);
+      setModalInputText('');
+      setIsTextModalOpen(true);
+      return;
+    }
+
+    if (item.uiAksiyonu && item.uiAksiyonu !== 'YOK') {
+      const currentRoute = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
+      window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
+        detail: {
+          action: item.uiAksiyonu,
+          route: currentRoute,
+          params: item.uiParametreleriJson
+        }
+      }));
+      const customPrompt = (item.prompt || '').trim();
+      if (customPrompt) {
+        await sendMessage(customPrompt);
+      }
+      return;
+    }
+
     const textToSend = (item.prompt || item.baslik || '').trim();
     if (textToSend) {
       await sendMessage(textToSend);
     }
+  };
+
+  const handleConfirmTextModal = async () => {
+    if (!modalInputText.trim() || isSending) return;
+    setIsTextModalOpen(false);
+    const basePrompt = (pendingHizliIstek?.prompt || pendingHizliIstek?.baslik || '').trim();
+    const finalMessage = `${basePrompt}\n\n[KULLANICI TARAFINDAN GİRİLEN METİN]:\n${modalInputText.trim()}`;
+    setPendingHizliIstek(null);
+    setModalInputText('');
+    await sendMessage(finalMessage);
   };
 
   if (!isOpen) return null;
@@ -650,7 +675,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         })}
 
         {isSending && (
-          <div className="ai-sending-block" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
+          <div className="ai-sending-block">
             <TypingIndicatorComponent />
             {AkalinUiResponseTimer ? (
               <AkalinUiResponseTimer
@@ -661,7 +686,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
                 longWaitingThreshold={10}
               />
             ) : (
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)' }}>
+              <span className="ai-sending-elapsed">
                 {elapsedSeconds}s
               </span>
             )}
@@ -711,7 +736,10 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
               <button
                 type="button"
                 className={`ai-btn-input-action ${attachedFiles.length > 0 ? 'active' : ''}`}
-                onClick={() => setIsCloudPickerOpen(true)}
+                onClick={() => {
+                  setPendingHizliIstek(null);
+                  setIsCloudPickerOpen(true);
+                }}
                 title={t('Buluttan Dosya Ekle')}
                 disabled={isSending}
               >
@@ -761,25 +789,113 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           showFolderTree={true}
           documentType={docContext.documentType}
           documentId={docContext.documentId}
-          onClose={() => setIsCloudPickerOpen(false)}
-          onSelectFile={(selected: any) => {
-            const fileItem: CloudFileItem = {
+          onClose={() => {
+            setIsCloudPickerOpen(false);
+            setPendingHizliIstek(null);
+          }}
+          onSelectFile={async (selected: any) => {
+            const fileUrl = selected.bulutDosyaUrl || selected.BulutDosyaUrl || selected.url || '';
+            const file: CloudFileItem = {
               id: selected.id || selected.Id,
-              dosyaAdi: selected.dosyaAdi || selected.DosyaAdi || selected.name || 'Dosya',
+              dosyaAdi: selected.dosyaAdi || selected.DosyaAdi || selected.name || t('Dosya'),
               dosyaBoyutu: selected.dosyaBoyutu || selected.DosyaBoyutu || selected.size,
               dosyaTipi: selected.dosyaTipi || selected.DosyaTipi || selected.type,
-              bulutDosyaUrl: selected.bulutDosyaUrl || selected.BulutDosyaUrl || selected.url,
+              bulutDosyaUrl: fileUrl,
+              url: fileUrl,
               provider: selected.provider || selected.Provider,
               belgeNo: selected.belgeNo || selected.BelgeNo,
               belgeTuru: selected.belgeTuru || selected.BelgeTuru
             };
-            setAttachedFiles(prev => {
-              if (prev.some(f => f.id === fileItem.id)) return prev;
-              return [...prev, fileItem];
-            });
             setIsCloudPickerOpen(false);
+
+            if (pendingHizliIstek) {
+              const basePrompt = (pendingHizliIstek.prompt || pendingHizliIstek.baslik || '').trim();
+              const combinedPrompt = `${basePrompt}\n\n[Eklenen Bulut Dosyası: ${file.dosyaAdi} (ID: ${file.id}, URL: ${file.url})]`;
+              setPendingHizliIstek(null);
+              await sendMessage(combinedPrompt);
+              return;
+            }
+
+            setAttachedFiles(prev => {
+              if (prev.some(f => f.id === file.id)) return prev;
+              return [...prev, file];
+            });
           }}
         />
+      )}
+
+      {/* ─── 6. Kampanya / Belge Metni Giriş Penceresi (isTextModalOpen) ─── */}
+      {isTextModalOpen && (
+        <div
+          className="ai-text-prompt-modal-overlay"
+          onClick={() => {
+            setIsTextModalOpen(false);
+            setPendingHizliIstek(null);
+          }}
+        >
+          <div
+            className="ai-text-prompt-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ai-text-prompt-modal-header">
+              <div className="ai-text-prompt-modal-title-group">
+                <span className="ai-text-prompt-modal-icon">
+                  {renderHizliIstekIcon(pendingHizliIstek?.ikon || 'FileText')}
+                </span>
+                <h4 className="ai-text-prompt-modal-title">
+                  {pendingHizliIstek?.baslik || t('Metin İçeriği Girin')}
+                </h4>
+              </div>
+              <button
+                type="button"
+                className="ai-text-prompt-modal-close"
+                onClick={() => {
+                  setIsTextModalOpen(false);
+                  setPendingHizliIstek(null);
+                }}
+                title={t('Kapat')}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="ai-text-prompt-modal-body">
+              <p className="ai-text-prompt-modal-desc">
+                {t('Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.')}
+              </p>
+              <textarea
+                className="ai-text-prompt-textarea"
+                rows={8}
+                autoFocus
+                value={modalInputText}
+                onChange={(e) => setModalInputText(e.target.value)}
+                placeholder={t('Kampanya metnini, fiyat listesini veya belge metnini buraya yapıştırın...')}
+              />
+            </div>
+
+            <div className="ai-text-prompt-modal-footer">
+              <button
+                type="button"
+                className="ai-text-prompt-btn-cancel"
+                onClick={() => {
+                  setIsTextModalOpen(false);
+                  setPendingHizliIstek(null);
+                }}
+              >
+                {t('İptal')}
+              </button>
+              <button
+                type="button"
+                className="ai-text-prompt-btn-submit"
+                disabled={!modalInputText.trim() || isSending}
+                onClick={handleConfirmTextModal}
+              >
+                <Sparkles size={15} />
+                <span>{t('Analiz Et ve Belge Oluştur')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </aside>
   );

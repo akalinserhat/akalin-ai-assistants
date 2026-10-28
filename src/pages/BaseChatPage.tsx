@@ -27,49 +27,57 @@
  * ============================================================================
  */
 
-import React, { 
-    useState, 
-    useEffect, 
-    useRef, 
-    useMemo, 
-    useCallback, 
+import React, {
+    useState,
+    useEffect,
+    useRef,
+    useMemo,
+    useCallback,
     ReactNode,
-    CSSProperties 
+    CSSProperties
 } from 'react';
-import { 
-    Sparkles, 
-    Bot, 
-    Send, 
-    Square, 
-    Plus, 
-    Trash2, 
-    History, 
-    MessageSquare, 
-    Paperclip, 
-    Copy, 
-    Check, 
-    ThumbsUp, 
-    ThumbsDown, 
-    RotateCcw, 
-    Edit2, 
-    X, 
-    Search, 
-    Download, 
-    ArrowDown, 
-    Clock, 
-    Cpu, 
-    FileText, 
-    FileUp, 
-    ExternalLink, 
-    PanelLeftClose, 
-    PanelLeft, 
-    Lightbulb, 
+import {
+    Sparkles,
+    Bot,
+    Send,
+    Square,
+    Plus,
+    Trash2,
+    History,
+    MessageSquare,
+    Paperclip,
+    Copy,
+    Check,
+    ThumbsUp,
+    ThumbsDown,
+    RotateCcw,
+    Edit2,
+    X,
+    Search,
+    Download,
+    ArrowDown,
+    Clock,
+    Cpu,
+    FileText,
+    FileUp,
+    ExternalLink,
+    PanelLeftClose,
+    PanelLeft,
+    Lightbulb,
     Layers,
     Share2,
     Code2,
     CheckCircle2,
     Pin,
-    Sliders
+    Sliders,
+    FileSpreadsheet,
+    FolderOpen,
+    Package,
+    Users,
+    TrendingUp,
+    AlertCircle,
+    Receipt,
+    Tag
 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -87,9 +95,20 @@ import {
     AiThinkingDetails,
     updateDocumentTitle
 } from '@akalin/ui';
+import '../styles/AiChatPanel.css';
 import '../styles/BaseChatPage.css';
 
 // ─── TİP TANIMLAMALARI (TYPES & INTERFACES) ──────────────────────────────────
+
+import type {
+    ChatAttachment,
+    ChatMessage,
+    ChatSession,
+    ChatAgent,
+    PromptSuggestion,
+    AgentHizliIstek,
+    CloudFileItem
+} from '../types';
 
 export type {
     ChatAttachment,
@@ -97,7 +116,35 @@ export type {
     ChatSession,
     ChatAgent,
     PromptSuggestion
-} from '../types';
+};
+
+let AkalinUiFilesOnClouds: any = null;
+try {
+    // @ts-ignore
+    const ui = require('@akalin/ui');
+    AkalinUiFilesOnClouds = ui.FilesOnClouds;
+} catch {
+    // Fallback
+}
+
+const renderBaseChatHizliIstekIcon = (iconName?: string) => {
+    switch (iconName) {
+        case 'FileSpreadsheet': return <FileSpreadsheet size={16} className="text-primary" />;
+        case 'FileText': return <FileText size={16} className="text-primary" />;
+        case 'FolderOpen': return <FolderOpen size={16} className="text-primary" />;
+        case 'Package': return <Package size={16} className="text-primary" />;
+        case 'Users': return <Users size={16} className="text-primary" />;
+        case 'TrendingUp': return <TrendingUp size={16} className="text-primary" />;
+        case 'AlertCircle': return <AlertCircle size={16} className="text-primary" />;
+        case 'Receipt': return <Receipt size={16} className="text-primary" />;
+        case 'Tag': return <Tag size={16} className="text-primary" />;
+        case 'Sparkle':
+        case 'Sparkles':
+            return <Sparkles size={16} className="text-primary" />;
+        default:
+            return <Lightbulb size={16} className="text-primary" />;
+    }
+};
 
 export interface BaseChatPageProps extends Omit<BasePageProps, 'onTitleEdit'> {
     // API & Backend Entegrasyonu
@@ -382,7 +429,47 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     const currentMessages: ChatMessage[] = externalMessages || activeSession?.messages || [];
     const [inputText, setInputText] = useState('');
     const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
-    
+    const [pendingHizliIstek, setPendingHizliIstek] = useState<AgentHizliIstek | null>(null);
+    const [isCloudPickerOpen, setIsCloudPickerOpen] = useState<boolean>(false);
+    const [isTextModalOpen, setIsTextModalOpen] = useState<boolean>(false);
+    const [modalInputText, setModalInputText] = useState<string>('');
+
+    const agentQuickRequests = useMemo<AgentHizliIstek[]>(() => {
+        if (!activeAgent) return [];
+        let rawList: AgentHizliIstek[] = [];
+        if (Array.isArray(activeAgent.hizliIstekler) && activeAgent.hizliIstekler.length > 0) {
+            rawList = activeAgent.hizliIstekler;
+        } else if (activeAgent.hizliIsteklerJson) {
+            try {
+                const parsed = JSON.parse(activeAgent.hizliIsteklerJson);
+                if (Array.isArray(parsed)) rawList = parsed;
+            } catch {
+                // ignore
+            }
+        }
+        return rawList
+            .filter(item => item.aktifMi !== false)
+            .sort((a, b) => (a.sira || 0) - (b.sira || 0));
+    }, [activeAgent]);
+
+    const effectiveSuggestions = useMemo<PromptSuggestion[]>(() => {
+        if (agentQuickRequests.length > 0) {
+            return agentQuickRequests.map((item, idx) => ({
+                id: item.id || `agent_req_${idx}`,
+                title: item.baslik,
+                baslik: item.baslik,
+                prompt: item.prompt || item.baslik,
+                icon: renderBaseChatHizliIstekIcon(item.ikon),
+                ikon: item.ikon,
+                uiAksiyonu: item.uiAksiyonu,
+                uiParametreleriJson: item.uiParametreleriJson,
+                sira: item.sira,
+                aktifMi: item.aktifMi
+            }));
+        }
+        return suggestions || [];
+    }, [agentQuickRequests, suggestions]);
+
     // Kontrollü veya yerel üretim durumu (Streaming / Generating)
     const [localIsGenerating, setLocalIsGenerating] = useState(false);
     const isGenerating = externalIsGenerating !== undefined ? externalIsGenerating : localIsGenerating;
@@ -460,7 +547,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     }, []);
 
     useEffect(() => {
-        const isNewUserMessage = currentMessages.length > prevMessagesLengthRef.current && 
+        const isNewUserMessage = currentMessages.length > prevMessagesLengthRef.current &&
             currentMessages[currentMessages.length - 1]?.role === 'user';
 
         if (isNewUserMessage) {
@@ -515,7 +602,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         setActiveSessionId(newSess.id);
         if (onSessionChange) onSessionChange(newSess);
         toast.success(t('auto_yeni_sohbet_baslatildi', 'Yeni sohbet başlatıldı.'));
-        
+
         setTimeout(() => {
             textareaRef.current?.focus();
         }, 100);
@@ -578,9 +665,9 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         if (onRenameSession) {
             onRenameSession(sessionId, editingSessionTitle.trim());
         } else {
-            setLocalSessions(prev => prev.map(s => 
-                s.id?.toString() === sessionId.toString() 
-                    ? { ...s, title: editingSessionTitle.trim(), updatedAt: new Date().toISOString() } 
+            setLocalSessions(prev => prev.map(s =>
+                s.id?.toString() === sessionId.toString()
+                    ? { ...s, title: editingSessionTitle.trim(), updatedAt: new Date().toISOString() }
                     : s
             ));
         }
@@ -598,15 +685,15 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         }
 
         if (!externalSessions) {
-            setLocalSessions(prev => prev.map(s => 
-                s.id?.toString() === sessionId.toString() 
-                    ? { ...s, pinned: nextPinned, updatedAt: new Date().toISOString() } 
+            setLocalSessions(prev => prev.map(s =>
+                s.id?.toString() === sessionId.toString()
+                    ? { ...s, pinned: nextPinned, updatedAt: new Date().toISOString() }
                     : s
             ));
         }
 
-        toast.success(nextPinned 
-            ? t('auto_sohbet_sabitlendi', 'Sohbet başa sabitlendi.') 
+        toast.success(nextPinned
+            ? t('auto_sohbet_sabitlendi', 'Sohbet başa sabitlendi.')
             : t('auto_sabitleme_kaldirildi', 'Sabitleme kaldırıldı.')
         );
     };
@@ -622,7 +709,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                     onClearMessages(activeSessionId);
                 }
                 if (!externalMessages) {
-                    setLocalSessions(prev => prev.map(s => 
+                    setLocalSessions(prev => prev.map(s =>
                         s.id?.toString() === activeSessionId?.toString()
                             ? { ...s, messages: [], updatedAt: new Date().toISOString() }
                             : s
@@ -656,7 +743,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
 
         // Oturumu güncelle ve ilk kullanıcı mesajı ise başlığı otomatik adlandır
         const isFirstMessage = currentMessages.length === 0;
-        const autoTitle = isFirstMessage 
+        const autoTitle = isFirstMessage
             ? (textToSend.trim().length > 32 ? textToSend.trim().substring(0, 32) + '...' : textToSend.trim())
             : activeSession?.title;
 
@@ -683,7 +770,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         if (onSendMessage) {
             try {
                 const result = await onSendMessage(userMessage.content, userMessage.attachments || [], activeSession);
-                
+
                 // onSendMessage bir ChatMessage veya metin döndürmüşse ve externalMessages yoksa asistan yanıtını ekle
                 if (!externalMessages && result) {
                     const assistantMessage: ChatMessage = typeof result === 'string' ? {
@@ -956,7 +1043,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     const filteredSessions = useMemo(() => {
         if (!searchSessionQuery.trim()) return sessions;
         const q = searchSessionQuery.toLowerCase();
-        return sessions.filter(s => 
+        return sessions.filter(s =>
             s.title?.toLowerCase().includes(q) ||
             s.messages.some(m => m.content?.toLowerCase().includes(q))
         );
@@ -1053,13 +1140,13 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
 
         return items;
     }, [
-        t, 
-        isSidebarOpen, 
-        currentMessages.length, 
-        handleCreateNewSession, 
-        handleClearCurrentMessages, 
-        handleExportMarkdown, 
-        handleExportJson, 
+        t,
+        isSidebarOpen,
+        currentMessages.length,
+        handleCreateNewSession,
+        handleClearCurrentMessages,
+        handleExportMarkdown,
+        handleExportJson,
         extraDropdownActions
     ]);
 
@@ -1173,7 +1260,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             className={`base-chat-page ${className}`}
             {...restBaseProps}
         >
-            <div className="base-chat-layout" style={style}>
+            <div className="base-chat-layout">
                 {/* ─── 1. SOHBET GEÇMİŞİ KENAR ÇUBUĞU (SIDEBAR) ─────────────── */}
                 {showHistorySidebar && (
                     <aside className={`base-chat-sidebar ${!isSidebarOpen ? 'collapsed' : ''}`}>
@@ -1210,7 +1297,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setSearchSessionQuery('')}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                                        className="base-chat-search-clear-btn"
                                     >
                                         <X size={12} className="text-secondary" />
                                     </button>
@@ -1462,17 +1549,61 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                 </p>
 
                                 {/* Hızlı Başlatıcı Öneri Kartları */}
-                                {suggestions && suggestions.length > 0 && (
+                                {effectiveSuggestions && effectiveSuggestions.length > 0 && (
                                     <div className="base-chat-suggestions-grid">
-                                        {suggestions.map((sug, i) => (
+                                        {effectiveSuggestions.map((sug, i) => (
                                             <div
                                                 key={sug.id || i}
                                                 className="base-chat-suggestion-card"
-                                                onClick={() => handleSendMessage(sug.prompt)}
+                                                onClick={async () => {
+                                                    if (isGenerating) return;
+                                                    const item: AgentHizliIstek = {
+                                                        id: sug.id ? String(sug.id) : undefined,
+                                                        baslik: sug.baslik || sug.title || '',
+                                                        prompt: sug.prompt || sug.baslik || sug.title || '',
+                                                        ikon: sug.ikon,
+                                                        uiAksiyonu: sug.uiAksiyonu,
+                                                        uiParametreleriJson: sug.uiParametreleriJson
+                                                    };
+
+                                                    if (item.uiAksiyonu === 'BULUT_DOSYA_SEC') {
+                                                        setPendingHizliIstek(item);
+                                                        setIsCloudPickerOpen(true);
+                                                        return;
+                                                    }
+
+                                                    if (item.uiAksiyonu === 'METIN_YAPISTIR_MODAL') {
+                                                        setPendingHizliIstek(item);
+                                                        setModalInputText('');
+                                                        setIsTextModalOpen(true);
+                                                        return;
+                                                    }
+
+                                                    if (item.uiAksiyonu && item.uiAksiyonu !== 'YOK') {
+                                                        const currentRoute = typeof window !== 'undefined' ? window.location.pathname : '';
+                                                        window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
+                                                            detail: {
+                                                                action: item.uiAksiyonu,
+                                                                route: currentRoute,
+                                                                params: item.uiParametreleriJson
+                                                            }
+                                                        }));
+                                                        const customPrompt = (sug.prompt || '').trim();
+                                                        if (customPrompt) {
+                                                            await handleSendMessage(customPrompt);
+                                                        }
+                                                        return;
+                                                    }
+
+                                                    const textToSend = (item.prompt || item.baslik || '').trim();
+                                                    if (textToSend) {
+                                                        await handleSendMessage(textToSend);
+                                                    }
+                                                }}
                                             >
                                                 <div className="base-chat-suggestion-header">
-                                                    {sug.icon || <Lightbulb size={16} className="text-primary" />}
-                                                    <span>{sug.title}</span>
+                                                    {sug.icon || renderBaseChatHizliIstekIcon(sug.ikon)}
+                                                    <span>{sug.baslik || sug.title}</span>
                                                 </div>
                                                 {sug.description && (
                                                     <span className="base-chat-suggestion-desc">
@@ -1522,7 +1653,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     if (msg.ttftMs !== undefined) badgeParts.push(`TTFT ${msg.ttftMs} ms`);
                                                     if (badgeParts.length === 0) return null;
                                                     return (
-                                                        <span 
+                                                        <span
                                                             className="base-chat-perf-badge"
                                                             title={[
                                                                 totalTok !== undefined ? `Toplam Token: ${totalTok}${msg.promptTokens ? ` (Prompt: ${msg.promptTokens}, Yanıt: ${msg.completionTokens})` : ''}` : '',
@@ -1766,6 +1897,137 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                     </div>
                 </main>
             </div>
+
+            {/* ─── BULUT DOSYASI SEÇİCİ (FilesOnClouds) ──────────────────────── */}
+            {isCloudPickerOpen && AkalinUiFilesOnClouds && (
+                <AkalinUiFilesOnClouds
+                    isOpen={isCloudPickerOpen}
+                    isModal={true}
+                    showFolderTree={true}
+                    documentType={documentType}
+                    onClose={() => {
+                        setIsCloudPickerOpen(false);
+                        setPendingHizliIstek(null);
+                    }}
+                    onSelectFile={async (selected: any) => {
+                        const fileUrl = selected.bulutDosyaUrl || selected.BulutDosyaUrl || selected.url || '';
+                        const file: CloudFileItem = {
+                            id: selected.id || selected.Id,
+                            dosyaAdi: selected.dosyaAdi || selected.DosyaAdi || selected.name || t('Dosya'),
+                            dosyaBoyutu: selected.dosyaBoyutu || selected.DosyaBoyutu || selected.size,
+                            dosyaTipi: selected.dosyaTipi || selected.DosyaTipi || selected.type,
+                            bulutDosyaUrl: fileUrl,
+                            url: fileUrl,
+                            provider: selected.provider || selected.Provider,
+                            belgeNo: selected.belgeNo || selected.BelgeNo,
+                            belgeTuru: selected.belgeTuru || selected.BelgeTuru
+                        };
+                        setIsCloudPickerOpen(false);
+
+                        if (pendingHizliIstek) {
+                            const basePrompt = (pendingHizliIstek.prompt || pendingHizliIstek.baslik || '').trim();
+                            const combinedPrompt = `${basePrompt}\n\n[Eklenen Bulut Dosyası: ${file.dosyaAdi} (ID: ${file.id}, URL: ${file.url})]`;
+                            setPendingHizliIstek(null);
+                            await handleSendMessage(combinedPrompt);
+                            return;
+                        }
+
+                        setPendingAttachments(prev => [
+                            ...prev,
+                            {
+                                id: file.id,
+                                name: file.dosyaAdi,
+                                size: file.dosyaBoyutu,
+                                type: file.dosyaTipi,
+                                url: file.url,
+                                cloudFileId: file.id
+                            }
+                        ]);
+                    }}
+                />
+            )}
+
+            {/* ─── KAMPANYA / BELGE METNİ GİRİŞ PENCERESİ (isTextModalOpen) ──── */}
+            {isTextModalOpen && (
+                <div
+                    className="ai-text-prompt-modal-overlay"
+                    onClick={() => {
+                        setIsTextModalOpen(false);
+                        setPendingHizliIstek(null);
+                    }}
+                >
+                    <div
+                        className="ai-text-prompt-modal"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="ai-text-prompt-modal-header">
+                            <div className="ai-text-prompt-modal-title-group">
+                                <span className="ai-text-prompt-modal-icon">
+                                    {renderBaseChatHizliIstekIcon(pendingHizliIstek?.ikon || 'FileText')}
+                                </span>
+                                <h4 className="ai-text-prompt-modal-title">
+                                    {pendingHizliIstek?.baslik || t('Metin İçeriği Girin')}
+                                </h4>
+                            </div>
+                            <button
+                                type="button"
+                                className="ai-text-prompt-modal-close"
+                                onClick={() => {
+                                    setIsTextModalOpen(false);
+                                    setPendingHizliIstek(null);
+                                }}
+                                title={t('Kapat')}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <div className="ai-text-prompt-modal-body">
+                            <p className="ai-text-prompt-modal-desc">
+                                {t('Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.')}
+                            </p>
+                            <textarea
+                                className="ai-text-prompt-textarea"
+                                rows={8}
+                                autoFocus
+                                value={modalInputText}
+                                onChange={(e) => setModalInputText(e.target.value)}
+                                placeholder={t('Kampanya metnini, fiyat listesini veya belge metnini buraya yapıştırın...')}
+                            />
+                        </div>
+
+                        <div className="ai-text-prompt-modal-footer">
+                            <button
+                                type="button"
+                                className="ai-text-prompt-btn-cancel"
+                                onClick={() => {
+                                    setIsTextModalOpen(false);
+                                    setPendingHizliIstek(null);
+                                }}
+                            >
+                                {t('İptal')}
+                            </button>
+                            <button
+                                type="button"
+                                className="ai-text-prompt-btn-submit"
+                                disabled={!modalInputText.trim() || isGenerating}
+                                onClick={async () => {
+                                    if (!modalInputText.trim() || isGenerating) return;
+                                    setIsTextModalOpen(false);
+                                    const basePrompt = (pendingHizliIstek?.prompt || pendingHizliIstek?.baslik || '').trim();
+                                    const finalMessage = `${basePrompt}\n\n[KULLANICI TARAFINDAN GİRİLEN METİN]:\n${modalInputText.trim()}`;
+                                    setPendingHizliIstek(null);
+                                    setModalInputText('');
+                                    await handleSendMessage(finalMessage);
+                                }}
+                            >
+                                <Sparkles size={15} />
+                                <span>{t('Analiz Et ve Belge Oluştur')}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ─── ONAY / UYARI DİALOGU (AlertDialog) ────────────────────────── */}
             <AlertDialog

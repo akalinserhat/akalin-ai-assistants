@@ -10,7 +10,8 @@
     "./styles": "./src/styles/index.css"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
   },
   "peerDependencies": {
     "@akalin/module_core": "*",

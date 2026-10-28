@@ -185,6 +185,16 @@
   color: var(--text-secondary, #9ca3af);
 }
 
+.base-chat-search-clear-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Oturumlar Listesi */
 .base-chat-sessions-list {
   flex: 1;
@@ -670,6 +680,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
