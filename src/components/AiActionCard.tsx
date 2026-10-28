@@ -1,47 +1,102 @@
 /**
  * @file AiActionCard.tsx
  * @description
- * @akalin/ai-assistants - Yapay Zeka Eylem ve ERP Kartı (AiActionCard) Bileşeni.
+ * @akalin/ai-assistants - Yapay Zeka Eylem, Onay/Seçim ve ERP Kartı (AiActionCard) Bileşeni.
  */
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, ArrowRight, CheckCircle2, ShoppingCart, Tag, ExternalLink, FileSpreadsheet, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import {
+  FileText,
+  ArrowRight,
+  CheckCircle2,
+  ShoppingCart,
+  Tag,
+  ExternalLink,
+  FileSpreadsheet,
+  MapPin,
+  Plus,
+  Check
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import { AiActionCardProps } from '../types';
+import { AiActionCardProps, AiActionOptionItem } from '../types';
 
 const getDefaultRoute = (type?: string): string => {
   if (!type) return '/';
-  const t = type.toLowerCase();
-  if (t.includes('kampanya')) return '/kampanyalar/yeni';
-  if (t.includes('fiyat')) return '/fiyat-listeleri/yeni';
-  if (t.includes('siparis') && (t.includes('verilen') || t.includes('alis'))) return '/siparisler/verilen/yeni';
-  if (t.includes('siparis')) return '/siparisler/alinan/yeni';
-  if (t.includes('fatura') && (t.includes('alis') || t.includes('gelen'))) return '/faturalar/alis/yeni';
-  if (t.includes('fatura')) return '/faturalar/satis/yeni';
-  if (t.includes('irsaliye')) return '/irsaliyeler/yeni';
-  if (t.includes('cari')) return '/cariler/yeni';
-  if (t.includes('urun') || t.includes('hizmet')) return '/urun-ve-hizmetler/yeni';
+  const lower = type.toLowerCase();
+  if (lower.includes('kampanya')) return '/kampanyalar/yeni';
+  if (lower.includes('fiyat')) return '/fiyat-listeleri/yeni';
+  if (lower.includes('siparis') && (lower.includes('verilen') || lower.includes('alis'))) return '/siparisler/verilen/yeni';
+  if (lower.includes('siparis')) return '/siparisler/alinan/yeni';
+  if (lower.includes('fatura') && (lower.includes('alis') || lower.includes('gelen'))) return '/faturalar/alis/yeni';
+  if (lower.includes('fatura')) return '/faturalar/satis/yeni';
+  if (lower.includes('irsaliye')) return '/irsaliyeler/yeni';
+  if (lower.includes('cari')) return '/cariler/yeni';
+  if (lower.includes('urun') || lower.includes('hizmet')) return '/urun-ve-hizmetler/yeni';
   return '/';
 };
 
-export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply }) => {
+export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, onSendChatReply }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
-  let data: any = null;
-  try {
-    data = JSON.parse(rawJson);
-  } catch {
-    return null;
-  }
+  const data = useMemo<any>(() => {
+    try {
+      const parsed = JSON.parse(rawJson);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+      return null;
+    }
+  }, [rawJson]);
 
-  if (!data || typeof data !== 'object') return null;
+  const secenekler: AiActionOptionItem[] = useMemo(() => {
+    if (!data || !Array.isArray(data.secenekler)) return [];
+    return data.secenekler;
+  }, [data]);
+
+  const [selectedOption, setSelectedOption] = useState<AiActionOptionItem | null>(() => {
+    if (!secenekler || secenekler.length === 0) return null;
+    return secenekler.find(opt => opt.varsayilanMi) || secenekler[0];
+  });
+
+  const [isResolved, setIsResolved] = useState<boolean>(false);
+  const [isWaitingExternal, setIsWaitingExternal] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (secenekler.length > 0 && !selectedOption) {
+      setSelectedOption(secenekler.find(opt => opt.varsayilanMi) || secenekler[0]);
+    }
+  }, [secenekler, selectedOption]);
+
+  useEffect(() => {
+    if (!isWaitingExternal) return;
+
+    const handleEntityUpdated = () => {
+      setIsWaitingExternal(false);
+      setIsResolved(true);
+    };
+
+    window.addEventListener('ai-entity-updated', handleEntityUpdated as EventListener);
+    return () => {
+      window.removeEventListener('ai-entity-updated', handleEntityUpdated as EventListener);
+    };
+  }, [isWaitingExternal]);
+
+  if (!data) return null;
 
   const eylemTipi = data.eylemTipi || data.actionType || data.action || 'BELGE_DOLDUR';
-  const belgeTuru = data.belgeTuru || data.documentType || 'Belge';
+  const belgeTuru = data.belgeTuru || data.documentType || t('Belge');
+  const isApprovalOrSelection = eylemTipi === 'ONAY_ISTE' || eylemTipi === 'SECIM_ISTE';
   const isExcelImport = eylemTipi === 'EXCEL_IMPORT' || data.action === 'EXCEL_IMPORT';
-  const isWaiting = data.durum === 'KULLANICI_BEKLENIYOR' || isExcelImport || eylemTipi === 'DOSYA_BEKLENIYOR' || eylemTipi === 'KULLANICI_BEKLENIYOR';
-  const defaultRoute = isExcelImport 
+  const isWaiting =
+    isWaitingExternal ||
+    data.durum === 'KULLANICI_BEKLENIYOR' ||
+    isExcelImport ||
+    eylemTipi === 'DOSYA_BEKLENIYOR' ||
+    eylemTipi === 'KULLANICI_BEKLENIYOR';
+
+  const defaultRoute = isExcelImport
     ? (belgeTuru.toLowerCase().includes('kampanya') ? '/kampanyalar/yeni/excel-import' : '/fiyat-listeleri/yeni/excel-import')
     : getDefaultRoute(belgeTuru);
   const targetUrl = data.yonlendirmeUrl || data.targetUrl || defaultRoute;
@@ -61,60 +116,147 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply }) 
       if (targetUrl) {
         navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
       }
-      toast.success(data.basariMesaji || 'Excel içe aktarım ekranı açılıyor...');
+      toast.success(data.basariMesaji || t('Excel içe aktarım ekranı açılıyor...'));
     } else if (isNavigation && targetUrl) {
       navigate(targetUrl);
-      toast.success(`${belgeTuru || 'İlgili'} sayfasına geçiş yapıldı.`);
+      toast.success(t('İlgili sayfaya geçiş yapıldı.'));
     } else if (onApply) {
       onApply(data);
     } else if (targetUrl) {
       navigate(targetUrl, { state: { initialAiData: data } });
-      toast.success(`${belgeTuru} verileri ilgili forma aktarıldı.`);
+      toast.success(t('Veriler ilgili forma aktarıldı.'));
     } else {
-      toast.success('İşlem tamamlandı.');
+      toast.success(t('İşlem tamamlandı.'));
     }
   };
 
+  const handleConfirmApproval = () => {
+    if (isResolved || isWaitingExternal) return;
+    setIsResolved(true);
+
+    let replyMessage = data.onayYanitMesaji || t('Evet, onaylıyorum. İşlemi tamamla.');
+    if (selectedOption) {
+      if (selectedOption.yanitMesaji) {
+        replyMessage = selectedOption.yanitMesaji;
+      } else if (!data.onayYanitMesaji || (secenekler.length > 1 && selectedOption.id !== secenekler[0]?.id)) {
+        const detailPart = selectedOption.detay || selectedOption.aciklama ? ` (${selectedOption.detay || selectedOption.aciklama})` : '';
+        replyMessage = `Evet, mevcut kaydı (${selectedOption.baslik} - ID: ${selectedOption.id}${detailPart}) kullanabilirsin, işlemi tamamla.`;
+      }
+    }
+
+    if (onSendChatReply) {
+      onSendChatReply(replyMessage);
+    }
+  };
+
+  const handleRejectAndOpenForm = () => {
+    if (isResolved || isWaitingExternal) return;
+    setIsWaitingExternal(true);
+
+    try {
+      sessionStorage.setItem(
+        'webakus_ai_waiting_entity',
+        JSON.stringify({
+          entityType: data.belgeTuru || 'CariAdres',
+          cariId: data.cariId,
+          timestamp: Date.now()
+        })
+      );
+    } catch {
+      // ignore storage errors
+    }
+
+    const redTargetUrl = data.redYonlendirmeUrl || `/cariler/${data.cariId || 'yeni'}/adres?tip=2`;
+    navigate(redTargetUrl, {
+      state: {
+        fromAiChat: true,
+        activeTabId: 'iletisim',
+        activeAdresTipi: 2
+      }
+    });
+  };
+
   const getHeaderIcon = () => {
-    if (isExcelImport) return <FileSpreadsheet size={16} color="var(--accent-primary, #6366f1)" />;
+    if (isExcelImport) return <FileSpreadsheet size={16} className="ai-action-card-icon-accent" />;
+    if (isApprovalOrSelection) return <MapPin size={16} className="ai-action-card-icon-accent" />;
     if (isNavigation) return <ExternalLink size={16} />;
     return <FileText size={16} />;
   };
 
-  const badgeText = data.durum === 'KULLANICI_BEKLENIYOR' ? 'KULLANICI BEKLENİYOR' : (data.badge || eylemTipi);
+  const badgeText = isResolved
+    ? t('TAMAMLANDI')
+    : isWaiting
+      ? t('KULLANICI BEKLENİYOR')
+      : (data.badge || eylemTipi);
+
+  const cardStateClass = isResolved
+    ? 'is-resolved'
+    : isWaiting
+      ? 'is-waiting'
+      : isApprovalOrSelection
+        ? 'is-approval'
+        : '';
+
+  const badgeStateClass = isResolved
+    ? 'resolved'
+    : isWaiting
+      ? 'waiting'
+      : '';
 
   return (
-    <div style={{
-      marginTop: '12px',
-      padding: '12px',
-      borderRadius: '8px',
-      border: isWaiting ? '1px solid var(--accent-primary, rgba(99, 102, 241, 0.4))' : '1px solid var(--border-color, #e2e8f0)',
-      background: 'var(--bg-secondary, #f8fafc)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: 'var(--text-primary, #0f172a)' }}>
+    <div className={`ai-action-card ${cardStateClass}`}>
+      <div className="ai-action-card-header">
+        <div className="ai-action-card-title-group">
           {getHeaderIcon()}
-          <span>{data.baslik || data.title || (isExcelImport ? 'Excel / Belge İçe Aktarımı Bekleniyor' : `${belgeTuru} Taslağı`)}</span>
+          <span>
+            {data.baslik || data.title || (isExcelImport ? t('Excel / Belge İçe Aktarımı Bekleniyor') : `${belgeTuru} ${t('Taslağı')}`)}
+          </span>
         </div>
-        <span style={{
-          fontSize: '11px',
-          padding: '2px 8px',
-          borderRadius: '999px',
-          background: isWaiting ? 'rgba(99, 102, 241, 0.12)' : 'var(--primary-color-10, rgba(59, 130, 246, 0.1))',
-          color: isWaiting ? 'var(--accent-primary, #6366f1)' : 'var(--primary-color, #3b82f6)',
-          fontWeight: 600
-        }}>
+        <span className={`ai-action-card-badge ${badgeStateClass}`}>
           {badgeText}
         </span>
       </div>
 
       {(data.ozet || data.summary || data.aciklama) && (
-        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary, #64748b)', lineHeight: '1.4' }}>
+        <p className="ai-action-card-summary">
           {data.ozet || data.summary || data.aciklama}
         </p>
+      )}
+
+      {/* Seçenekler Listesi (Radyo / Kart Seçimi) */}
+      {isApprovalOrSelection && secenekler.length > 0 && (
+        <div className="ai-action-card-options">
+          {secenekler.map((opt, idx) => {
+            const isSelected = selectedOption?.id === opt.id;
+            const isLocked = isResolved || isWaitingExternal;
+            return (
+              <label
+                key={opt.id ?? idx}
+                className={`ai-action-card-option-item ${isSelected ? 'selected' : ''} ${isLocked ? 'disabled' : ''}`}
+                onClick={() => {
+                  if (!isLocked) setSelectedOption(opt);
+                }}
+              >
+                <input
+                  type="radio"
+                  name={`ai-option-${data.cariId || 'default'}`}
+                  className="ai-action-card-option-radio"
+                  checked={isSelected}
+                  disabled={isLocked}
+                  onChange={() => {
+                    if (!isLocked) setSelectedOption(opt);
+                  }}
+                />
+                <div className="ai-action-card-option-content">
+                  <span className="ai-action-card-option-title">{opt.baslik}</span>
+                  {(opt.detay || opt.aciklama) && (
+                    <span className="ai-action-card-option-detail">{opt.detay || opt.aciklama}</span>
+                  )}
+                </div>
+              </label>
+            );
+          })}
+        </div>
       )}
 
       {/* Hareketli Bekleme İlerleme Çubuğu (Animated Progress Bar) */}
@@ -125,63 +267,84 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply }) 
           </div>
           <div className="ai-action-card-progress-status">
             <span className="ai-pulse-dot" />
-            <span>{data.beklemeMetni || 'Kullanıcının dosya seçimi / içe aktarımı bekleniyor...'}</span>
+            <span>
+              {data.beklemeMetni || t('Kullanıcının dosya seçimi / içe aktarımı bekleniyor...')}
+            </span>
           </div>
         </div>
       )}
 
       {kalemSayisi > 0 && (
-        <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="ai-action-card-meta-row">
           <ShoppingCart size={13} />
-          <span>{kalemSayisi} kalem ürün/hizmet tespit edildi</span>
+          <span>{kalemSayisi} {t('kalem ürün/hizmet tespit edildi')}</span>
         </div>
       )}
 
       {kampanyaSayisi > 0 && (
-        <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="ai-action-card-meta-row">
           <Tag size={13} />
-          <span>{kampanyaSayisi} kampanya kuralı çıkarıldı</span>
+          <span>{kampanyaSayisi} {t('kampanya kuralı çıkarıldı')}</span>
         </div>
       )}
 
-      <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          type="button"
-          onClick={handleApply}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '7px 14px',
-            fontSize: '12.5px',
-            fontWeight: 600,
-            borderRadius: '6px',
-            backgroundColor: isExcelImport ? 'var(--accent-primary, #6366f1)' : 'var(--primary-color, #3b82f6)',
-            color: '#fff',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)'
-          }}
-        >
-          {isExcelImport ? (
-            <>
-              <FileSpreadsheet size={14} />
-              <span>{data.butonYazisi || 'Excel İçe Aktarımı Aç ve Dosya Seç'}</span>
-            </>
-          ) : isNavigation ? (
-            <>
-              <span>{data.butonYazisi || 'Sayfaya Git'}</span>
-              <ArrowRight size={13} />
-            </>
+      {/* Onay / Seçim Modu Düğmeleri */}
+      {isApprovalOrSelection ? (
+        !isWaitingExternal && (
+          isResolved ? (
+            <div className="ai-action-card-resolved-note">
+              <CheckCircle2 size={14} />
+              <span>{t('Yanıtınız sohbete iletildi.')}</span>
+            </div>
           ) : (
-            <>
-              <CheckCircle2 size={13} />
-              <span>{data.butonYazisi || 'Forma Aktar'}</span>
-            </>
-          )}
-        </button>
-      </div>
+            <div className="ai-action-card-actions approval-actions">
+              <button
+                type="button"
+                className="ai-action-card-btn-confirm"
+                onClick={handleConfirmApproval}
+                disabled={isResolved || isWaitingExternal}
+              >
+                <Check size={14} />
+                <span>{data.onayButonYazisi || t('Evet, Bu Adresi Kullan')}</span>
+              </button>
+              <button
+                type="button"
+                className="ai-action-card-btn-reject"
+                onClick={handleRejectAndOpenForm}
+                disabled={isResolved || isWaitingExternal}
+              >
+                <Plus size={14} />
+                <span>{data.redButonYazisi || t('Hayır, Cari Kartta Yeni Adres Tanımla')}</span>
+              </button>
+            </div>
+          )
+        )
+      ) : (
+        <div className="ai-action-card-actions">
+          <button
+            type="button"
+            onClick={handleApply}
+            className={`ai-action-card-btn ${isExcelImport ? 'accent' : ''}`}
+          >
+            {isExcelImport ? (
+              <>
+                <FileSpreadsheet size={14} />
+                <span>{data.butonYazisi || t('Excel İçe Aktarımı Aç ve Dosya Seç')}</span>
+              </>
+            ) : isNavigation ? (
+              <>
+                <span>{data.butonYazisi || t('Sayfaya Git')}</span>
+                <ArrowRight size={13} />
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={13} />
+                <span>{data.butonYazisi || t('Forma Aktar')}</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

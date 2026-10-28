@@ -167,9 +167,19 @@ export interface AiChatPanelProps {
   onClose?: () => void;
 }
 
+export interface AiActionOptionItem {
+  id: number | string;
+  baslik: string;
+  detay?: string;
+  aciklama?: string;
+  varsayilanMi?: boolean;
+  [key: string]: any;
+}
+
 export interface AiActionCardProps {
   rawJson: string;
   onApply?: (data: any) => void;
+  onSendChatReply?: (replyText: string) => void;
 }
 
 export interface AiAssistantButtonProps {

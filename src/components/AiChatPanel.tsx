@@ -194,6 +194,33 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sendMessageRef = useRef(sendMessage);
+
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
+
+  // Sol ekranda (Cari Kart / Adres vb.) yapılan kayıt tamamlandığında el sıkışma (Handshake) sinyalini yakala
+  useEffect(() => {
+    const handleEntityUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<any>;
+      const detail = customEvent?.detail;
+      if (!detail) return;
+
+      if (detail.entityType === 'CariAdres' && detail.adres) {
+        const adres = detail.adres;
+        const il = adres.adresIl || adres.ilAdi || '';
+        const ilce = adres.adresIlce || adres.ilceAdi || '';
+        const replyMessage = `Yeni adres kaydını tamamladım: ${adres.baslik} - ${adres.formattedAdres || adres.acikAdres} (${il}/${ilce}). Lütfen işlemi bu yeni adres ile tamamla.`;
+        sendMessageRef.current(replyMessage);
+      }
+    };
+
+    window.addEventListener('ai-entity-updated', handleEntityUpdated as EventListener);
+    return () => {
+      window.removeEventListener('ai-entity-updated', handleEntityUpdated as EventListener);
+    };
+  }, []);
 
   // Yanıt üretim süresi sayacı (Timer)
   useEffect(() => {
@@ -667,6 +694,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
                   <AiActionCard
                     rawJson={m.eylemVerisiJson}
                     onApply={onApplyAiData}
+                    onSendChatReply={(replyText) => sendMessage(replyText)}
                   />
                 )}
               </div>

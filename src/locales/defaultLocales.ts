@@ -35,7 +35,13 @@ export const AI_ASSISTANTS_LOCALES = {
     'Kapat': 'Kapat',
     'Dosya': 'Dosya',
     'Kampanya metnini, fiyat listesini veya belge metnini buraya yapıştırın...': 'Kampanya metnini, fiyat listesini veya belge metnini buraya yapıştırın...',
-    'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.': 'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.'
+    'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.': 'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.',
+    'Evet, Bu Adresi Kullan': 'Evet, Bu Adresi Kullan',
+    'Hayır, Cari Kartta Yeni Adres Tanımla': 'Hayır, Cari Kartta Yeni Adres Tanımla',
+    'Yanıtınız sohbete iletildi.': 'Yanıtınız sohbete iletildi.',
+    'TAMAMLANDI': 'TAMAMLANDI',
+    'KULLANICI BEKLENİYOR': 'KULLANICI BEKLENİYOR',
+    'Evet, onaylıyorum. İşlemi tamamla.': 'Evet, onaylıyorum. İşlemi tamamla.'
   },
   en: {
     'ai_asistan_baslik': 'AI Assistant',
@@ -67,6 +73,12 @@ export const AI_ASSISTANTS_LOCALES = {
     'Kapat': 'Close',
     'Dosya': 'File',
     'Kampanya metnini, fiyat listesini veya belge metnini buraya yapıştırın...': 'Paste campaign text, price list, or document text here...',
-    'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.': 'Paste the campaign text, price list, or document content you want analyzed and converted into a document below.'
+    'Analiz edilmesini ve belgeye dönüştürülmesini istediğiniz kampanya metnini, fiyat listesini veya belge içeriğini aşağıya yapıştırın.': 'Paste the campaign text, price list, or document content you want analyzed and converted into a document below.',
+    'Evet, Bu Adresi Kullan': 'Yes, Use This Address',
+    'Hayır, Cari Kartta Yeni Adres Tanımla': 'No, Define New Address in Customer Card',
+    'Yanıtınız sohbete iletildi.': 'Your response has been sent to the chat.',
+    'TAMAMLANDI': 'COMPLETED',
+    'KULLANICI BEKLENİYOR': 'WAITING FOR USER',
+    'Evet, onaylıyorum. İşlemi tamamla.': 'Yes, I confirm. Complete the operation.'
   }
 };

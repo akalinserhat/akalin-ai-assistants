@@ -251,6 +251,7 @@ const defaultSuggestionsList: PromptSuggestion[] = [
 ];
 
 import { AiMarkdownContent as FormattedMessageContent } from '../components/AiMarkdownContent';
+import { AiActionCard } from '../components/AiActionCard';
 
 // ─── ANA BİLEŞEN: BaseChatPage ───────────────────────────────────────────────
 
@@ -1697,8 +1698,14 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     </div>
                                                 )}
 
-                                                {/* Yapay Zeka Tarafından Üretilen ERP Taslağı Önizleme Kartı */}
-                                                {msg.eylemPayload && (
+                                                {/* Yapay Zeka Tarafından Üretilen ERP Taslağı / Eylem & Onay Kartı */}
+                                                {((msg as any).eylemVerisiJson || msg.eylemPayload?.eylemTipi) ? (
+                                                    <AiActionCard
+                                                        rawJson={(msg as any).eylemVerisiJson || (typeof msg.eylemPayload === 'string' ? msg.eylemPayload : JSON.stringify(msg.eylemPayload))}
+                                                        onApply={handleApplyDraft}
+                                                        onSendChatReply={(replyText) => handleSendMessage(replyText)}
+                                                    />
+                                                ) : msg.eylemPayload && (
                                                     <div className="ai-chat-draft-preview-card">
                                                         <div className="ai-chat-draft-preview-header">
                                                             <div className="flex items-center gap-6">
