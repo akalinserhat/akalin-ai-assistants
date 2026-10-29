@@ -14,12 +14,12 @@ export interface RestAiChatAdapterOptions {
 
 export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAiChatAdapter {
   const baseURL = (options?.baseURL || '/api/AiChat').replace(/\/$/, '');
-  
+
   const getAuthHeaders = () => {
-    const token = options?.getToken 
-      ? options.getToken() 
+    const token = options?.getToken
+      ? options.getToken()
       : (typeof window !== 'undefined' ? (localStorage.getItem('token') || sessionStorage.getItem('token')) : null);
-    
+
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
@@ -130,7 +130,8 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
               uiParametreleriJson: item.uiParametreleriJson || item.UiParametreleriJson,
               sira: item.sira ?? item.Sira ?? 1,
               aktifMi: item.aktifMi ?? item.AktifMi ?? true,
-              hizliErisimDugmesi: item.hizliErisimDugmesi ?? item.HizliErisimDugmesi ?? true
+              hizliErisimDugmesi: item.hizliErisimDugmesi ?? item.HizliErisimDugmesi ?? true,
+              dugmeBasligi: item.dugmeBasligi || item.DugmeBasligi || ''
             })) : [],
             hizliIsteklerJson: a.hizliIsteklerJson
           };

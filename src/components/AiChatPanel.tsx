@@ -608,7 +608,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
               <span className="ai-suggestions-title">{t('Hızlı ERP İstekleri:')}</span>
               <div className="ai-suggestions-grid">
                 {displaySuggestions.map((item, idx) => {
-                  const baslik = item.baslik;
+                  const baslik = item.dugmeBasligi?.trim() || item.baslik;
                   const prompt = item.prompt || item.baslik;
                   const ikon = item.ikon;
                   return (

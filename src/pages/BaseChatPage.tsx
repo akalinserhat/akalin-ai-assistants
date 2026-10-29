@@ -457,8 +457,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         if (agentQuickRequests.length > 0) {
             return agentQuickRequests.map((item, idx) => ({
                 id: item.id || `agent_req_${idx}`,
-                title: item.baslik,
-                baslik: item.baslik,
+                title: item.dugmeBasligi?.trim() || item.baslik,
+                baslik: item.dugmeBasligi?.trim() || item.baslik,
                 prompt: item.prompt || item.baslik,
                 icon: renderBaseChatHizliIstekIcon(item.ikon),
                 ikon: item.ikon,
@@ -466,7 +466,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 uiParametreleriJson: item.uiParametreleriJson,
                 sira: item.sira,
                 aktifMi: item.aktifMi,
-                hizliErisimDugmesi: (item as any).hizliErisimDugmesi ?? (item as any).HizliErisimDugmesi ?? true
+                hizliErisimDugmesi: (item as any).hizliErisimDugmesi ?? (item as any).HizliErisimDugmesi ?? true,
+                dugmeBasligi: item.dugmeBasligi
             }));
         }
         return suggestions || [];

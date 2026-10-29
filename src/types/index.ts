@@ -85,6 +85,7 @@ export interface AiAkisDugumu {
   evetDugumId?: string;
   hayirDugumId?: string;
   hizliErisimDugmesi?: boolean;
+  dugmeBasligi?: string;
 }
 
 export interface AgentHizliIstek {
@@ -97,6 +98,7 @@ export interface AgentHizliIstek {
   sira?: number;
   aktifMi?: boolean;
   hizliErisimDugmesi?: boolean;
+  dugmeBasligi?: string;
   tetiklemeAnahtarlari?: string;
   akisDugumleri?: AiAkisDugumu[];
 }
@@ -308,6 +310,7 @@ export interface PromptSuggestion {
   sira?: number;
   aktifMi?: boolean;
   hizliErisimDugmesi?: boolean;
+  dugmeBasligi?: string;
 }
 
 // ─── MODÜL FABRİKASI SEÇENEKLERİ (MODULE CORE UYUMLU) ───────────────────────
