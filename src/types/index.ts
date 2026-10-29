@@ -64,6 +64,29 @@ export type AiHizliIstekUiAksiyonu =
   | 'OZEL_ROTA'
   | string;
 
+export type AiAkisDugumuTipi =
+  | 'BASLANGIC_GIRDI'
+  | 'MCP_SORGULA'
+  | 'KARAR_ONAY'
+  | 'EKRAN_AC'
+  | 'BELGE_OLUSTUR'
+  | 'SONUC'
+  | string;
+
+export interface AiAkisDugumu {
+  id: string;
+  tip: AiAkisDugumuTipi;
+  baslik: string;
+  prompt: string;
+  aracKodu?: string;
+  uiAksiyonu?: AiHizliIstekUiAksiyonu;
+  hedefRota?: string;
+  sonrakiDugumId?: string;
+  evetDugumId?: string;
+  hayirDugumId?: string;
+  hizliErisimDugmesi?: boolean;
+}
+
 export interface AgentHizliIstek {
   id?: string;
   baslik: string;
@@ -73,6 +96,9 @@ export interface AgentHizliIstek {
   uiParametreleriJson?: string;
   sira?: number;
   aktifMi?: boolean;
+  hizliErisimDugmesi?: boolean;
+  tetiklemeAnahtarlari?: string;
+  akisDugumleri?: AiAkisDugumu[];
 }
 
 export type AiHizliIstek = AgentHizliIstek;
@@ -281,6 +307,7 @@ export interface PromptSuggestion {
   uiParametreleriJson?: string;
   sira?: number;
   aktifMi?: boolean;
+  hizliErisimDugmesi?: boolean;
 }
 
 // ─── MODÜL FABRİKASI SEÇENEKLERİ (MODULE CORE UYUMLU) ───────────────────────

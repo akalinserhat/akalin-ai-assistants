@@ -449,7 +449,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             }
         }
         return rawList
-            .filter(item => item.aktifMi !== false)
+            .filter(item => item.aktifMi !== false && (item as any).hizliErisimDugmesi !== false && (item as any).HizliErisimDugmesi !== false)
             .sort((a, b) => (a.sira || 0) - (b.sira || 0));
     }, [activeAgent]);
 
@@ -465,7 +465,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 uiAksiyonu: item.uiAksiyonu,
                 uiParametreleriJson: item.uiParametreleriJson,
                 sira: item.sira,
-                aktifMi: item.aktifMi
+                aktifMi: item.aktifMi,
+                hizliErisimDugmesi: (item as any).hizliErisimDugmesi ?? (item as any).HizliErisimDugmesi ?? true
             }));
         }
         return suggestions || [];

@@ -129,7 +129,8 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
               uiAksiyonu: item.uiAksiyonu || item.UiAksiyonu || 'YOK',
               uiParametreleriJson: item.uiParametreleriJson || item.UiParametreleriJson,
               sira: item.sira ?? item.Sira ?? 1,
-              aktifMi: item.aktifMi ?? item.AktifMi ?? true
+              aktifMi: item.aktifMi ?? item.AktifMi ?? true,
+              hizliErisimDugmesi: item.hizliErisimDugmesi ?? item.HizliErisimDugmesi ?? true
             })) : [],
             hizliIsteklerJson: a.hizliIsteklerJson
           };

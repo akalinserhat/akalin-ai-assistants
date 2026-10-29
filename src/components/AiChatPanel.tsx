@@ -364,7 +364,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     const rawList = currentAgent?.hizliIstekler;
     if (!Array.isArray(rawList) || rawList.length === 0) return [];
     return rawList
-      .filter((item: AgentHizliIstek) => item.aktifMi !== false)
+      .filter((item: AgentHizliIstek) => item.aktifMi !== false && item.hizliErisimDugmesi !== false)
       .sort((a: AgentHizliIstek, b: AgentHizliIstek) => (a.sira || 0) - (b.sira || 0));
   }, [currentAgent]);
 
@@ -380,38 +380,42 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const handleHizliIstekClick = async (item: AgentHizliIstek) => {
     if (isSending) return;
 
-    if (item.uiAksiyonu === 'BULUT_DOSYA_SEC') {
-      setPendingHizliIstek(item);
+    const firstNode = Array.isArray(item.akisDugumleri) && item.akisDugumleri.length > 0 ? item.akisDugumleri[0] : null;
+    const effectiveUiAction = (item.uiAksiyonu && item.uiAksiyonu !== 'YOK')
+      ? item.uiAksiyonu
+      : (firstNode?.uiAksiyonu || 'YOK');
+    const effectivePrompt = (item.prompt || firstNode?.prompt || item.baslik || '').trim();
+
+    if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
+      setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction });
       setIsCloudPickerOpen(true);
       return;
     }
 
-    if (item.uiAksiyonu === 'METIN_YAPISTIR_MODAL') {
-      setPendingHizliIstek(item);
+    if (effectiveUiAction === 'METIN_YAPISTIR_MODAL') {
+      setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction });
       setModalInputText('');
       setIsTextModalOpen(true);
       return;
     }
 
-    if (item.uiAksiyonu && item.uiAksiyonu !== 'YOK') {
+    if (effectiveUiAction && effectiveUiAction !== 'YOK') {
       const currentRoute = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
       window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
         detail: {
-          action: item.uiAksiyonu,
+          action: effectiveUiAction,
           route: currentRoute,
-          params: item.uiParametreleriJson
+          params: item.uiParametreleriJson || firstNode?.hedefRota
         }
       }));
-      const customPrompt = (item.prompt || '').trim();
-      if (customPrompt) {
-        await sendMessage(customPrompt);
+      if (effectivePrompt) {
+        await sendMessage(effectivePrompt);
       }
       return;
     }
 
-    const textToSend = (item.prompt || item.baslik || '').trim();
-    if (textToSend) {
-      await sendMessage(textToSend);
+    if (effectivePrompt) {
+      await sendMessage(effectivePrompt);
     }
   };
 
