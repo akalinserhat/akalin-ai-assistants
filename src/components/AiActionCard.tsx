@@ -105,6 +105,20 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
   const isNavigation = eylemTipi === 'SAYFAYA_GIT' || eylemTipi === 'NAVIGASYON';
 
   const handleApply = () => {
+    try {
+      sessionStorage.setItem(
+        'webakus_ai_waiting_entity',
+        JSON.stringify({
+          entityType: belgeTuru,
+          targetUrl,
+          timestamp: Date.now()
+        })
+      );
+      setIsWaitingExternal(true);
+    } catch {
+      // ignore storage errors
+    }
+
     if (isExcelImport) {
       window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
         detail: {
@@ -118,12 +132,12 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
       }
       toast.success(data.basariMesaji || t('Excel içe aktarım ekranı açılıyor...'));
     } else if (isNavigation && targetUrl) {
-      navigate(targetUrl);
+      navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
       toast.success(t('İlgili sayfaya geçiş yapıldı.'));
     } else if (onApply) {
       onApply(data);
     } else if (targetUrl) {
-      navigate(targetUrl, { state: { initialAiData: data } });
+      navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
       toast.success(t('Veriler ilgili forma aktarıldı.'));
     } else {
       toast.success(t('İşlem tamamlandı.'));

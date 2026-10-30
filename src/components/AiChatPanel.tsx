@@ -200,18 +200,74 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     sendMessageRef.current = sendMessage;
   }, [sendMessage]);
 
-  // Sol ekranda (Cari Kart / Adres vb.) yapılan kayıt tamamlandığında el sıkışma (Handshake) sinyalini yakala
+  // Sol ekranda (Cari Kart, Ürün Kartı, Satış Belgesi, Adres vb.) yapılan kayıt veya iptal işlemini yakala (Sihirbaz Handshake)
   useEffect(() => {
+    let lastDispatchedAt = 0;
+
+    const formatSavedEntitySummary = (rawObj: any): string => {
+      if (!rawObj || typeof rawObj !== 'object') return '';
+      const ignoredKeys = new Set([
+        'silindimi',
+        'firmaid',
+        'sirketid',
+        'olusturankullaniciid',
+        'guncelleyenkullaniciid',
+        'olusturmatarihi',
+        'guncellemetarihi',
+        'rowversion',
+        'password',
+        'sifre',
+        'token'
+      ]);
+
+      const lines: string[] = [];
+      Object.entries(rawObj).forEach(([key, val]) => {
+        if (val === null || val === undefined || val === '') return;
+        if (ignoredKeys.has(key.toLowerCase())) return;
+        if (Array.isArray(val)) {
+          if (val.length === 0) return;
+          lines.push(`- ${key}: ${val.length} kayıt`);
+          return;
+        }
+        if (typeof val === 'object') return;
+        lines.push(`- ${key}: ${String(val)}`);
+      });
+      return lines.slice(0, 20).join('\n');
+    };
+
     const handleEntityUpdated = (event: Event) => {
+      const now = Date.now();
+      if (now - lastDispatchedAt < 600) return;
+
       const customEvent = event as CustomEvent<any>;
       const detail = customEvent?.detail;
       if (!detail) return;
 
       if (detail.entityType === 'CariAdres' && detail.adres) {
+        lastDispatchedAt = now;
         const adres = detail.adres;
         const il = adres.adresIl || adres.ilAdi || '';
         const ilce = adres.adresIlce || adres.ilceAdi || '';
         const replyMessage = `Yeni adres kaydını tamamladım: ${adres.baslik} - ${adres.formattedAdres || adres.acikAdres} (${il}/${ilce}). Lütfen işlemi bu yeni adres ile tamamla.`;
+        sendMessageRef.current(replyMessage);
+        return;
+      }
+
+      if (detail.saved === false || detail.cancelled) {
+        lastDispatchedAt = now;
+        const pageLabel = detail.pageTitle || detail.entityType || detail.route || 'Form';
+        const cancelMessage = `Açılan "${pageLabel}" ekranını kaydetmeden kapattım. Lütfen nasıl devam etmek istediğimi sor.`;
+        sendMessageRef.current(cancelMessage);
+        return;
+      }
+
+      if (detail.saved && detail.savedData) {
+        lastDispatchedAt = now;
+        const summary = formatSavedEntitySummary(detail.savedData);
+        const entityLabel = detail.entityLabel || detail.entityType || detail.route || 'Form';
+        const replyMessage = summary
+          ? `"${entityLabel}" kaydını aşağıdaki bilgilerle tamamladım:\n${summary}\n\nLütfen kaydedilen bu bilgileri bana özetleyerek teyit et ve görev akışındaki bir sonraki adıma geç.`
+          : `"${entityLabel}" kaydını tamamladım. Lütfen kaydedilen bilgileri teyit et ve görev akışındaki bir sonraki adıma geç.`;
         sendMessageRef.current(replyMessage);
       }
     };
