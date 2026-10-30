@@ -147,7 +147,11 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         state: {
           initialAiData: data,
           fromAiChat: true,
-          returnRoute: originRoute
+          returnRoute: originRoute,
+          externalSettings:
+            data.hariciSayfaAyarlari || data.waitingEntityPayload?.hariciSayfaAyarlari,
+          hariciSayfaAyarlari:
+            data.hariciSayfaAyarlari || data.waitingEntityPayload?.hariciSayfaAyarlari
         }
       });
     } else if (isNavigation && targetUrl) {
