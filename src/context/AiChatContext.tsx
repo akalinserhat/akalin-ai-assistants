@@ -6,14 +6,15 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import toast from 'react-hot-toast';
-import { 
-  AiSession, 
-  AiMessage, 
-  AiPanelMode, 
-  AiPageContext, 
-  AiChatContextType, 
-  AiChatProviderProps, 
+import {
+  AiSession,
+  AiMessage,
+  AiPanelMode,
+  AiPageContext,
+  AiChatContextType,
+  AiChatProviderProps,
   AgentDefinition,
+  AiAttachedFilePayload,
   IAiChatAdapter
 } from '../types';
 import { createRestAiChatAdapter } from '../adapters/AiChatAdapter';
@@ -150,7 +151,7 @@ export const matchAgentForRoute = (route: string, agents: AgentDefinition[]): Ag
   const targetCode = resolveRouteToAgentCode(route);
   if (!targetCode) return null;
 
-  return agents.find(a => 
+  return agents.find(a =>
     (a.kod && a.kod.toUpperCase() === targetCode.toUpperCase()) ||
     (targetCode === 'KAMPANYA_UZMANI' && (a.ad?.toLowerCase().includes('kampanya') || a.ad?.toLowerCase().includes('fiyat farkı'))) ||
     (targetCode === 'STOK_UZMANI' && (a.ad?.toLowerCase().includes('stok') || a.ad?.toLowerCase().includes('envanter'))) ||
@@ -164,7 +165,7 @@ export const matchAgentForRoute = (route: string, agents: AgentDefinition[]): Ag
 
 export const AiChatContext = createContext<AiChatContextType | undefined>(undefined);
 
-export const AiChatProvider: React.FC<AiChatProviderProps> = ({ 
+export const AiChatProvider: React.FC<AiChatProviderProps> = ({
   children,
   apiEndpoint = '/api/AiChat',
   adapter: propAdapter,
@@ -440,7 +441,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
   }, [activeSessionId]);
 
   // Mesaj gönder
-  const sendMessage = useCallback(async (text: string, customAgentId?: number) => {
+  const sendMessage = useCallback(async (text: string, customAgentId?: number, ekDosyalar?: AiAttachedFilePayload[]) => {
     if (!text.trim() || isSending) return;
 
     const currentSessionId = activeSessionId;
@@ -465,7 +466,8 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
         mesaj: text.trim(),
         aiAjanId: customAgentId || selectedAgentId,
         sayfaBaglami: pageContext.route,
-        eylemVerisiJson: pageContext.data ? JSON.stringify(pageContext.data) : undefined
+        eylemVerisiJson: pageContext.data ? JSON.stringify(pageContext.data) : undefined,
+        ekDosyalar: ekDosyalar && ekDosyalar.length > 0 ? ekDosyalar : undefined
       };
 
       const result = await adapterRef.current.sendMessage(payload, abortControllerRef.current.signal);

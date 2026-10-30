@@ -256,9 +256,6 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
       if (detail.saved === false || detail.cancelled) {
         lastDispatchedAt = now;
-        const pageLabel = detail.pageTitle || detail.entityLabel || detail.entityType || detail.route || 'Form';
-        const cancelMessage = `Açılan "${pageLabel}" ekranını kaydetmeden kapattım. Lütfen nasıl devam etmek istediğimi sor.`;
-        sendMessageRef.current(cancelMessage);
         return;
       }
 
@@ -273,44 +270,80 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           metinIcerigi?: string;
         }>;
 
-        const cloudTags = files
-          .filter(f => f.bulutDosyaId)
-          .map(f => `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId}, Tür: ${f.uzanti || 'Belge'})]`)
+        const importedAttachmentItems: CloudFileItem[] = files.map((f, idx) => ({
+          id: f.bulutDosyaId || `local_${Date.now()}_${idx}`,
+          dosyaAdi: f.dosyaAdi,
+          dosyaBoyutu: f.boyut,
+          dosyaTipi: f.uzanti,
+          bulutDosyaId: f.bulutDosyaId,
+          metinIcerigi: f.metinIcerigi
+        }));
+
+        setAttachedFiles(prev => {
+          const next = [...prev];
+          for (const item of importedAttachmentItems) {
+            const existingIdx = next.findIndex(existing => existing.dosyaAdi === item.dosyaAdi);
+            if (existingIdx !== -1) {
+              next[existingIdx] = item;
+            } else {
+              next.push(item);
+            }
+          }
+          return next;
+        });
+
+        // "Form Aç" düğümünden sonra gelen başka bir düğüm yoksa LLM'e prompt gönderme
+        const nextNode = detail.sonrakiDugum;
+        const hasNextNode = Boolean(
+          (detail.sonrakiDugumId && String(detail.sonrakiDugumId).trim()) || nextNode
+        );
+        if (!hasNextNode) {
+          return;
+        }
+
+        const ekDosyalar = files.map(f => ({
+          dosyaAdi: f.dosyaAdi,
+          dosyaTipi: f.uzanti,
+          dosyaBoyutu: f.boyut,
+          bulutDosyaId: f.bulutDosyaId,
+          metinIcerigi: f.metinIcerigi
+        }));
+
+        const attachmentTags = files
+          .map(f =>
+            f.bulutDosyaId
+              ? `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId}, Tür: ${f.uzanti || 'Belge'})]`
+              : `[📎 Ekli Dosya: ${f.dosyaAdi}]`
+          )
           .join('\n');
 
-        const basePrompt = [detail.workflowPrompt, detail.nodePrompt]
-          .map(s => (s || '').trim())
-          .filter(Boolean)
-          .join('\n');
+        const nextPrompt = (
+          nextNode?.prompt ||
+          nextNode?.Prompt ||
+          detail.nodePrompt ||
+          detail.workflowPrompt ||
+          ''
+        ).trim();
 
-        const fileNames = files.map(f => f.dosyaAdi).join(', ');
-        const extractedBlocks = files
-          .filter(f => f.metinIcerigi)
-          .map(f => `--- [İçeri Aktarılan Dosya: ${f.dosyaAdi}] ---\n${f.metinIcerigi}\n--- [Dosya Sonu: ${f.dosyaAdi}] ---`)
-          .join('\n\n');
-
-        const parts: string[] = [];
-        if (cloudTags) parts.push(cloudTags);
-        if (basePrompt) {
-          parts.push(basePrompt);
-        } else {
-          parts.push(`"${fileNames}" dosyasını içeri aktardım.`);
-        }
-        if (extractedBlocks) {
-          parts.push(extractedBlocks);
-        } else if (!cloudTags) {
-          parts.push(`İçeri aktarılan dosya: ${fileNames}`);
-        }
-
-        sendMessageRef.current(parts.join('\n\n'));
+        const messageToSend = nextPrompt ? `${attachmentTags}\n\n${nextPrompt}` : attachmentTags;
+        setAttachedFiles([]);
+        sendMessageRef.current(messageToSend, undefined, ekDosyalar);
         return;
       }
 
       if (detail.saved && detail.savedData) {
         lastDispatchedAt = now;
+        const nextNode = detail.sonrakiDugum;
+        const hasNextNode = Boolean(
+          (detail.sonrakiDugumId && String(detail.sonrakiDugumId).trim()) || nextNode
+        );
+        if (!hasNextNode) {
+          return;
+        }
+
         const summary = formatSavedEntitySummary(detail.savedData);
         const entityLabel = detail.entityLabel || detail.entityType || detail.route || 'Form';
-        const workflowHeader = [detail.workflowPrompt, detail.nodePrompt]
+        const workflowHeader = [nextNode?.prompt || nextNode?.Prompt, detail.nodePrompt, detail.workflowPrompt]
           .map(s => (s || '').trim())
           .filter(Boolean)
           .join('\n');
@@ -424,9 +457,25 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     if ((!inputPrompt.trim() && attachedFiles.length === 0) || isSending) return;
 
     let textToSend = inputPrompt.trim();
+    const ekDosyalar = attachedFiles.map(f => ({
+      dosyaAdi: f.dosyaAdi,
+      dosyaTipi: f.dosyaTipi,
+      dosyaBoyutu: f.dosyaBoyutu,
+      bulutDosyaId: f.bulutDosyaId || (typeof f.id === 'number' ? f.id : undefined),
+      metinIcerigi: f.metinIcerigi
+    }));
+
     if (attachedFiles.length > 0) {
-      const fileTags = attachedFiles.map(f => `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.id}, Tür: ${f.dosyaTipi || 'Belge'})]`).join('\n');
-      textToSend = textToSend ? `${fileTags}\n\n${textToSend}` : `${fileTags}\nLütfen ekli bulut dosyasını/dosyalarını inceleyip ilgili ERP işlemlerini gerçekleştirin.`;
+      const fileTags = attachedFiles
+        .map(f =>
+          f.bulutDosyaId || typeof f.id === 'number'
+            ? `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId || f.id}, Tür: ${f.dosyaTipi || 'Belge'})]`
+            : `[📎 Ekli Dosya: ${f.dosyaAdi}]`
+        )
+        .join('\n');
+      textToSend = textToSend
+        ? `${fileTags}\n\n${textToSend}`
+        : `${fileTags}\nLütfen ekli dosyayı/dosyaları inceleyip ilgili ERP işlemlerini gerçekleştirin.`;
     }
 
     setInputPrompt('');
@@ -434,7 +483,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
     }
-    await sendMessage(textToSend);
+    await sendMessage(textToSend, undefined, ekDosyalar.length > 0 ? ekDosyalar : undefined);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -577,14 +626,14 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         configuredNodeMessage ||
         (isFileImportEntity
           ? t(
-              'kampanya_yazisi_import_yonergesi',
-              'Kampanya yazısını içeri aktarmak için aşağıdaki düğmeye basın.'
-            )
+            'kampanya_yazisi_import_yonergesi',
+            'Kampanya yazısını içeri aktarmak için aşağıdaki düğmeye basın.'
+          )
           : t(
-              'form_ac_varsayilan_yonerge',
-              '{{formAdi}} ekranını açmak için aşağıdaki düğmeye basın.',
-              { formAdi: entityLabel }
-            ));
+            'form_ac_varsayilan_yonerge',
+            '{{formAdi}} ekranını açmak için aşağıdaki düğmeye basın.',
+            { formAdi: entityLabel }
+          ));
 
       const configuredButtonLabel = (
         firstActionNode?.dugmeBasligi ||
@@ -603,6 +652,14 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         item.baslik ||
         effectivePrompt
       ).trim();
+
+      const nextIdFromForm =
+        firstActionNode?.sonrakiDugumId ||
+        firstActionNode?.SonrakiDugumId ||
+        '';
+      const nextNodeAfterForm = nextIdFromForm
+        ? rawNodes.find((n) => (n.id || n.Id) === nextIdFromForm)
+        : null;
 
       const actionCardPayload = {
         eylemTipi: 'FORM_AC',
@@ -625,6 +682,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           workflowPrompt: effectivePrompt,
           nodeId: firstActionNode?.id || firstActionNode?.Id,
           nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
+          sonrakiDugumId: nextNodeAfterForm ? (nextNodeAfterForm.id || nextNodeAfterForm.Id) : '',
+          sonrakiDugum: nextNodeAfterForm || null,
           kayitSonrasiTeyitEt: (firstActionNode?.kayitSonrasiTeyitEt ?? firstActionNode?.KayitSonrasiTeyitEt) !== false
         }
       };

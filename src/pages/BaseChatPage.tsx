@@ -1692,6 +1692,14 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                             effectivePrompt
                                                         ).trim();
 
+                                                        const nextIdFromForm =
+                                                            firstActionNode?.sonrakiDugumId ||
+                                                            firstActionNode?.SonrakiDugumId ||
+                                                            '';
+                                                        const nextNodeAfterForm = nextIdFromForm
+                                                            ? rawNodes.find((n) => (n.id || n.Id) === nextIdFromForm)
+                                                            : null;
+
                                                         const actionCardPayload = {
                                                             eylemTipi: 'FORM_AC',
                                                             badge: t('FORM AÇ', 'FORM AÇ'),
@@ -1713,6 +1721,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                                 workflowPrompt: effectivePrompt,
                                                                 nodeId: firstActionNode?.id || firstActionNode?.Id,
                                                                 nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
+                                                                sonrakiDugumId: nextNodeAfterForm ? (nextNodeAfterForm.id || nextNodeAfterForm.Id) : '',
+                                                                sonrakiDugum: nextNodeAfterForm || null,
                                                                 kayitSonrasiTeyitEt: (firstActionNode?.kayitSonrasiTeyitEt ?? firstActionNode?.KayitSonrasiTeyitEt) !== false
                                                             }
                                                         };

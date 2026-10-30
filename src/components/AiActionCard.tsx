@@ -111,14 +111,14 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
       if (shouldWait) {
         const waitingPayload = data.waitingEntityPayload
           ? {
-              ...data.waitingEntityPayload,
-              timestamp: Date.now()
-            }
+            ...data.waitingEntityPayload,
+            timestamp: Date.now()
+          }
           : {
-              entityType: belgeTuru,
-              targetUrl,
-              timestamp: Date.now()
-            };
+            entityType: belgeTuru,
+            targetUrl,
+            timestamp: Date.now()
+          };
         sessionStorage.setItem(
           'webakus_ai_waiting_entity',
           JSON.stringify(waitingPayload)

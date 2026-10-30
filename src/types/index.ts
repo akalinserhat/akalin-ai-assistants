@@ -41,7 +41,7 @@ export interface AiPageContext {
 }
 
 export interface CloudFileItem {
-  id: number;
+  id: number | string;
   dosyaAdi: string;
   dosyaBoyutu?: number;
   dosyaTipi?: string;
@@ -50,6 +50,16 @@ export interface CloudFileItem {
   provider?: string;
   belgeNo?: string;
   belgeTuru?: string;
+  bulutDosyaId?: number | string;
+  metinIcerigi?: string;
+}
+
+export interface AiAttachedFilePayload {
+  dosyaAdi: string;
+  dosyaTipi?: string;
+  dosyaBoyutu?: number;
+  bulutDosyaId?: number | string;
+  metinIcerigi?: string;
 }
 
 // ─── UZMAN AJAN TİPLERİ ─────────────────────────────────────────────────────
@@ -146,7 +156,7 @@ export interface AiChatContextType {
   messages: AiMessage[];
   loading: boolean;
   isSending: boolean;
-  sendMessage: (text: string, customAgentId?: number) => Promise<void>;
+  sendMessage: (text: string, customAgentId?: number, ekDosyalar?: AiAttachedFilePayload[]) => Promise<void>;
   appendLocalExchange: (userText: string, assistantText: string, eylemVerisiJson?: string) => void;
   stopGenerating: () => void;
   createNewSession: (title?: string) => Promise<number | null>;
@@ -185,6 +195,7 @@ export interface IAiChatAdapter {
     sayfaBaglami?: string;
     eylemVerisiJson?: string;
     dosyaIdleri?: number[];
+    ekDosyalar?: AiAttachedFilePayload[];
   }, signal?: AbortSignal) => Promise<{
     oturumId: number;
     oturumBaslik?: string;

@@ -57,7 +57,8 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
         aiAjanId: payload.aiAjanId,
         sayfaBaglami: payload.sayfaBaglami,
         eylemVerisiJson: payload.eylemVerisiJson,
-        dosyaIdleri: payload.dosyaIdleri
+        dosyaIdleri: payload.dosyaIdleri,
+        ekDosyalar: payload.ekDosyalar
       };
 
       const res = await axios.post(`${baseURL}/mesaj-gonder`, requestPayload, {
