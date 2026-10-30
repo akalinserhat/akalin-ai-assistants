@@ -317,6 +317,13 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           )
           .join('\n');
 
+        const nextNodeVarlikAdi = (nextNode?.varlikAdi || nextNode?.VarlikAdi || '').trim();
+        const nextNodeVarlikKodu = (nextNode?.varlikKodu || nextNode?.VarlikKodu || '').trim();
+        const targetMcpLine =
+          nextNodeVarlikAdi || nextNodeVarlikKodu
+            ? `[Hedef MCP Varlığı: ${nextNodeVarlikAdi || nextNodeVarlikKodu}${nextNodeVarlikKodu ? ` (${nextNodeVarlikKodu})` : ''}]`
+            : '';
+
         const nextPrompt = (
           nextNode?.prompt ||
           nextNode?.Prompt ||
@@ -325,7 +332,9 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           ''
         ).trim();
 
-        const messageToSend = nextPrompt ? `${attachmentTags}\n\n${nextPrompt}` : attachmentTags;
+        const messageToSend = [attachmentTags, targetMcpLine, nextPrompt]
+          .filter(Boolean)
+          .join('\n\n');
         setAttachedFiles([]);
         sendMessageRef.current(messageToSend, undefined, ekDosyalar);
         return;
@@ -567,27 +576,41 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
             ? '/araclar/bulut-dosyalari'
             : '');
 
+    const isAiProcessStep =
+      nodeTip === 'AI_ISLEM' ||
+      nodeTip === 'MCP_SORGULA' ||
+      nodeTip === 'BELGE_OLUSTUR';
+
     const isFormOpenStep =
-      nodeTip === 'FORM_AC' ||
-      nodeTip === 'EKRAN_AC' ||
-      Boolean(nodeTargetRoute) ||
-      nodeUiAction === 'OZEL_ROTA';
+      !isAiProcessStep &&
+      (nodeTip === 'FORM_AC' ||
+        nodeTip === 'EKRAN_AC' ||
+        Boolean(nodeTargetRoute) ||
+        nodeUiAction === 'OZEL_ROTA');
 
-    const effectiveUiAction = isFormOpenStep
-      ? (nodeUiAction && nodeUiAction !== 'YOK' ? nodeUiAction : 'OZEL_ROTA')
-      : (item.uiAksiyonu && item.uiAksiyonu !== 'YOK')
-        ? item.uiAksiyonu
-        : (nodeUiAction || 'YOK');
+    const effectiveUiAction = isAiProcessStep
+      ? 'YOK'
+      : isFormOpenStep
+        ? (nodeUiAction && nodeUiAction !== 'YOK' ? nodeUiAction : 'OZEL_ROTA')
+        : (item.uiAksiyonu && item.uiAksiyonu !== 'YOK')
+          ? item.uiAksiyonu
+          : (nodeUiAction || 'YOK');
 
-    const effectivePrompt = (
-      item.prompt ||
-      baslaNode?.prompt ||
-      baslaNode?.Prompt ||
-      firstActionNode?.prompt ||
-      firstActionNode?.Prompt ||
+    const nodeVarlikAdi = (firstActionNode?.varlikAdi || firstActionNode?.VarlikAdi || '').trim();
+    const targetMcpDirective =
+      isAiProcessStep && (nodeVarlikAdi || nodeVarlikKodu)
+        ? `[Hedef MCP Varlığı: ${nodeVarlikAdi || nodeVarlikKodu}${nodeVarlikKodu ? ` (${nodeVarlikKodu})` : ''}]`
+        : '';
+
+    const rawEffectivePrompt = (
+      (isAiProcessStep
+        ? (firstActionNode?.prompt || firstActionNode?.Prompt || item.prompt || baslaNode?.prompt || baslaNode?.Prompt)
+        : (item.prompt || baslaNode?.prompt || baslaNode?.Prompt || firstActionNode?.prompt || firstActionNode?.Prompt)) ||
       item.baslik ||
       ''
     ).trim();
+
+    const effectivePrompt = [targetMcpDirective, rawEffectivePrompt].filter(Boolean).join('\n\n');
 
     if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
       setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction });
@@ -699,7 +722,26 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     }
 
     if (effectivePrompt) {
-      await sendMessage(effectivePrompt);
+      if (attachedFiles.length > 0) {
+        const ekDosyalar = attachedFiles.map(f => ({
+          dosyaAdi: f.dosyaAdi,
+          dosyaTipi: f.dosyaTipi,
+          dosyaBoyutu: f.dosyaBoyutu,
+          bulutDosyaId: f.bulutDosyaId || f.id,
+          metinIcerigi: f.metinIcerigi
+        }));
+        const fileTags = attachedFiles
+          .map(f =>
+            f.metinIcerigi && !f.bulutDosyaId
+              ? `[📎 Ekli Dosya: ${f.dosyaAdi}]`
+              : `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.id}, Tür: ${f.dosyaTipi || 'Belge'})]`
+          )
+          .join('\n');
+        setAttachedFiles([]);
+        await sendMessage(`${fileTags}\n\n${effectivePrompt}`, undefined, ekDosyalar);
+      } else {
+        await sendMessage(effectivePrompt);
+      }
     }
   };
 
