@@ -96,6 +96,7 @@ export interface AiAkisDugumu {
   hayirDugumId?: string;
   hizliErisimDugmesi?: boolean;
   dugmeBasligi?: string;
+  kullaniciMesaji?: string;
 }
 
 export interface AgentHizliIstek {
@@ -146,6 +147,7 @@ export interface AiChatContextType {
   loading: boolean;
   isSending: boolean;
   sendMessage: (text: string, customAgentId?: number) => Promise<void>;
+  appendLocalExchange: (userText: string, assistantText: string, eylemVerisiJson?: string) => void;
   stopGenerating: () => void;
   createNewSession: (title?: string) => Promise<number | null>;
   startNewSession: () => Promise<void>;

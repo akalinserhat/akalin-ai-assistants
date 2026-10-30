@@ -125,27 +125,28 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
               const rawNodes = item.akisDugumleri || item.AkisDugumleri;
               const akisDugumleri = Array.isArray(rawNodes)
                 ? rawNodes.map((n: any) => ({
-                    id: n.id || n.Id || '',
-                    tip: n.tip || n.Tip || 'MCP_SORGULA',
-                    baslik: n.baslik || n.Baslik || '',
-                    prompt: n.prompt ?? n.Prompt ?? '',
-                    aracKodu: n.aracKodu || n.AracKodu,
-                    uiAksiyonu: n.uiAksiyonu || n.UiAksiyonu,
-                    hedefRota: n.hedefRota || n.HedefRota,
-                    mcpVarlikId: n.mcpVarlikId || n.McpVarlikId,
-                    modulKodu: n.modulKodu || n.ModulKodu,
-                    modulAdi: n.modulAdi || n.ModulAdi,
-                    varlikKodu: n.varlikKodu || n.VarlikKodu,
-                    varlikAdi: n.varlikAdi || n.VarlikAdi,
-                    varlikTuru: n.varlikTuru || n.VarlikTuru,
-                    kayitBekle: (n.kayitBekle ?? n.KayitBekle) !== false,
-                    kayitSonrasiTeyitEt: (n.kayitSonrasiTeyitEt ?? n.KayitSonrasiTeyitEt) !== false,
-                    sonrakiDugumId: n.sonrakiDugumId || n.SonrakiDugumId,
-                    evetDugumId: n.evetDugumId || n.EvetDugumId,
-                    hayirDugumId: n.hayirDugumId || n.HayirDugumId,
-                    hizliErisimDugmesi: (n.hizliErisimDugmesi ?? n.HizliErisimDugmesi) !== false,
-                    dugmeBasligi: n.dugmeBasligi || n.DugmeBasligi
-                  }))
+                  id: n.id || n.Id || '',
+                  tip: n.tip || n.Tip || 'MCP_SORGULA',
+                  baslik: n.baslik || n.Baslik || '',
+                  prompt: n.prompt ?? n.Prompt ?? '',
+                  aracKodu: n.aracKodu || n.AracKodu,
+                  uiAksiyonu: n.uiAksiyonu || n.UiAksiyonu,
+                  hedefRota: n.hedefRota || n.HedefRota,
+                  mcpVarlikId: n.mcpVarlikId || n.McpVarlikId,
+                  modulKodu: n.modulKodu || n.ModulKodu,
+                  modulAdi: n.modulAdi || n.ModulAdi,
+                  varlikKodu: n.varlikKodu || n.VarlikKodu,
+                  varlikAdi: n.varlikAdi || n.VarlikAdi,
+                  varlikTuru: n.varlikTuru || n.VarlikTuru,
+                  kayitBekle: (n.kayitBekle ?? n.KayitBekle) !== false,
+                  kayitSonrasiTeyitEt: (n.kayitSonrasiTeyitEt ?? n.KayitSonrasiTeyitEt) !== false,
+                  sonrakiDugumId: n.sonrakiDugumId || n.SonrakiDugumId,
+                  evetDugumId: n.evetDugumId || n.EvetDugumId,
+                  hayirDugumId: n.hayirDugumId || n.HayirDugumId,
+                  hizliErisimDugmesi: (n.hizliErisimDugmesi ?? n.HizliErisimDugmesi) !== false,
+                  dugmeBasligi: n.dugmeBasligi || n.DugmeBasligi,
+                  kullaniciMesaji: n.kullaniciMesaji || n.KullaniciMesaji
+                }))
                 : [];
 
               return {

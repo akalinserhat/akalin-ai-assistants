@@ -102,19 +102,29 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
   const targetUrl = data.yonlendirmeUrl || data.targetUrl || defaultRoute;
   const kalemSayisi = data.kalemler?.length || data.items?.length || 0;
   const kampanyaSayisi = data.kampanyalar?.length || data.content?.details?.length || 0;
-  const isNavigation = eylemTipi === 'SAYFAYA_GIT' || eylemTipi === 'NAVIGASYON';
+  const isFormOpen = eylemTipi === 'FORM_AC' || eylemTipi === 'EKRAN_AC';
+  const isNavigation = eylemTipi === 'SAYFAYA_GIT' || eylemTipi === 'NAVIGASYON' || isFormOpen;
 
   const handleApply = () => {
+    const shouldWait = data.kayitBekle !== false;
     try {
-      sessionStorage.setItem(
-        'webakus_ai_waiting_entity',
-        JSON.stringify({
-          entityType: belgeTuru,
-          targetUrl,
-          timestamp: Date.now()
-        })
-      );
-      setIsWaitingExternal(true);
+      if (shouldWait) {
+        const waitingPayload = data.waitingEntityPayload
+          ? {
+              ...data.waitingEntityPayload,
+              timestamp: Date.now()
+            }
+          : {
+              entityType: belgeTuru,
+              targetUrl,
+              timestamp: Date.now()
+            };
+        sessionStorage.setItem(
+          'webakus_ai_waiting_entity',
+          JSON.stringify(waitingPayload)
+        );
+        setIsWaitingExternal(true);
+      }
     } catch {
       // ignore storage errors
     }
@@ -131,6 +141,15 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
       }
       toast.success(data.basariMesaji || t('Excel içe aktarım ekranı açılıyor...'));
+    } else if (isFormOpen && targetUrl) {
+      const originRoute = data.returnRoute || (typeof window !== 'undefined' ? window.location.pathname : '/');
+      navigate(targetUrl, {
+        state: {
+          initialAiData: data,
+          fromAiChat: true,
+          returnRoute: originRoute
+        }
+      });
     } else if (isNavigation && targetUrl) {
       navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
       toast.success(t('İlgili sayfaya geçiş yapıldı.'));
@@ -338,12 +357,18 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
           <button
             type="button"
             onClick={handleApply}
-            className={`ai-action-card-btn ${isExcelImport ? 'accent' : ''}`}
+            className={`ai-action-card-btn ${isExcelImport || isFormOpen ? 'accent' : ''}`}
           >
             {isExcelImport ? (
               <>
                 <FileSpreadsheet size={14} />
                 <span>{data.butonYazisi || t('Excel İçe Aktarımı Aç ve Dosya Seç')}</span>
+              </>
+            ) : isFormOpen ? (
+              <>
+                <ExternalLink size={14} />
+                <span>{data.butonYazisi || t('Ekranı Aç')}</span>
+                <ArrowRight size={13} />
               </>
             ) : isNavigation ? (
               <>

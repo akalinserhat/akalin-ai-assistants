@@ -222,11 +222,15 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
     toast.success('Yeni sohbet başlatıldı.');
   }, []);
 
-  // Sayfa bağlamı değiştiğinde oturumu sıfırla
+  // Sayfa bağlamı değiştiğinde oturumu sıfırla (Aktif bir Sihirbaz Form Açma beklemesi yoksa)
   const setPageContext = useCallback((newContext: AiPageContext | ((prev: AiPageContext) => AiPageContext)) => {
     setPageContextState(prev => {
       const next = typeof newContext === 'function' ? newContext(prev) : newContext;
-      if (next.route && prev.route && next.route !== prev.route) {
+      const isWaitingForWizardForm =
+        typeof sessionStorage !== 'undefined' &&
+        Boolean(sessionStorage.getItem('webakus_ai_waiting_entity'));
+
+      if (next.route && prev.route && next.route !== prev.route && !isWaitingForWizardForm) {
         setActiveSessionId(null);
         setMessages([]);
         if (typeof window !== 'undefined') {
@@ -237,8 +241,13 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
     });
   }, []);
 
-  // Sayfa rotasına göre ajanı otomatik öner
+  // Sayfa rotasına göre ajanı otomatik öner (Sihirbaz Form Açma beklemesi sırasında mevcut ajanı koru)
   useEffect(() => {
+    const isWaitingForWizardForm =
+      typeof sessionStorage !== 'undefined' &&
+      Boolean(sessionStorage.getItem('webakus_ai_waiting_entity'));
+    if (isWaitingForWizardForm) return;
+
     if (pageContext.route && agents.length > 0) {
       const matched = matchAgentForRoute(pageContext.route, agents);
       if (matched && matched.id) {
@@ -408,6 +417,28 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
     }
   }, []);
 
+  // LLM çağrısı yapmadan yerel kullanıcı mesajı + asistan eylem kartı balonunu sohbete ekle
+  const appendLocalExchange = useCallback((userText: string, assistantText: string, eylemVerisiJson?: string) => {
+    const nowIso = new Date().toISOString();
+    const baseId = Date.now();
+    const userMsg: AiMessage = {
+      id: baseId,
+      aiSohbetOturumuId: activeSessionId || 0,
+      role: 'user',
+      icerik: userText.trim(),
+      tarih: nowIso
+    };
+    const assistantMsg: AiMessage = {
+      id: baseId + 1,
+      aiSohbetOturumuId: activeSessionId || 0,
+      role: 'assistant',
+      icerik: assistantText.trim(),
+      eylemVerisiJson,
+      tarih: nowIso
+    };
+    setMessages(prev => [...prev, userMsg, assistantMsg]);
+  }, [activeSessionId]);
+
   // Mesaj gönder
   const sendMessage = useCallback(async (text: string, customAgentId?: number) => {
     if (!text.trim() || isSending) return;
@@ -505,6 +536,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
         loading,
         isSending,
         sendMessage,
+        appendLocalExchange,
         stopGenerating,
         createNewSession,
         startNewSession,

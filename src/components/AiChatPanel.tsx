@@ -171,6 +171,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     messages,
     isSending,
     sendMessage,
+    appendLocalExchange,
     stopGenerating,
     startNewSession,
     deleteSession,
@@ -556,42 +557,84 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       const currentRoute = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
       const resolvedTargetRoute = nodeTargetRoute || item.uiParametreleriJson || '';
       const shouldWaitForSave = (firstActionNode?.kayitBekle ?? firstActionNode?.KayitBekle) !== false;
+      const entityLabel =
+        firstActionNode?.varlikAdi ||
+        firstActionNode?.VarlikAdi ||
+        firstActionNode?.baslik ||
+        item.baslik ||
+        t('Form');
+      const isFileImportEntity =
+        nodeVarlikKodu === 'dosya-ice-aktar-karti' ||
+        resolvedTargetRoute === '/araclar/dosya-al';
 
-      if (typeof sessionStorage !== 'undefined' && shouldWaitForSave) {
-        try {
-          sessionStorage.setItem(
-            'webakus_ai_waiting_entity',
-            JSON.stringify({
-              entityType: nodeVarlikKodu || firstActionNode?.baslik || 'Form',
-              entityLabel: firstActionNode?.varlikAdi || firstActionNode?.VarlikAdi || firstActionNode?.baslik || item.baslik || 'Form',
-              targetUrl: resolvedTargetRoute,
-              workflowId: item.id,
-              workflowTitle: item.baslik,
-              workflowPrompt: effectivePrompt,
-              nodeId: firstActionNode?.id || firstActionNode?.Id,
-              nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
-              kayitSonrasiTeyitEt: (firstActionNode?.kayitSonrasiTeyitEt ?? firstActionNode?.KayitSonrasiTeyitEt) !== false,
-              timestamp: Date.now()
-            })
-          );
-        } catch {
-          // ignore storage errors
+      const configuredNodeMessage = (
+        firstActionNode?.kullaniciMesaji ||
+        firstActionNode?.KullaniciMesaji ||
+        ''
+      ).trim();
+
+      const assistantDisplayText =
+        configuredNodeMessage ||
+        (isFileImportEntity
+          ? t(
+              'kampanya_yazisi_import_yonergesi',
+              'Kampanya yazısını içeri aktarmak için aşağıdaki düğmeye basın.'
+            )
+          : t(
+              'form_ac_varsayilan_yonerge',
+              '{{formAdi}} ekranını açmak için aşağıdaki düğmeye basın.',
+              { formAdi: entityLabel }
+            ));
+
+      const configuredButtonLabel = (
+        firstActionNode?.dugmeBasligi ||
+        firstActionNode?.DugmeBasligi ||
+        ''
+      ).trim();
+
+      const buttonLabel =
+        configuredButtonLabel ||
+        `${entityLabel} ${t('ekranini_ac', 'Ekranını Aç')}`;
+
+      const userDisplayText = (
+        baslaNode?.dugmeBasligi ||
+        baslaNode?.DugmeBasligi ||
+        item.dugmeBasligi ||
+        item.baslik ||
+        effectivePrompt
+      ).trim();
+
+      const actionCardPayload = {
+        eylemTipi: 'FORM_AC',
+        badge: t('FORM AÇ', 'FORM AÇ'),
+        baslik: entityLabel,
+        butonYazisi: buttonLabel,
+        yonlendirmeUrl: resolvedTargetRoute,
+        returnRoute: currentRoute,
+        uiAksiyonu: effectiveUiAction,
+        kayitBekle: shouldWaitForSave,
+        beklemeMetni: isFileImportEntity
+          ? t('Kullanıcının dosya seçimi / içe aktarımı bekleniyor...')
+          : t('Kullanıcının formu doldurup kaydetmesi bekleniyor...'),
+        waitingEntityPayload: {
+          entityType: nodeVarlikKodu || firstActionNode?.baslik || 'Form',
+          entityLabel,
+          targetUrl: resolvedTargetRoute,
+          workflowId: item.id,
+          workflowTitle: item.baslik,
+          workflowPrompt: effectivePrompt,
+          nodeId: firstActionNode?.id || firstActionNode?.Id,
+          nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
+          kayitSonrasiTeyitEt: (firstActionNode?.kayitSonrasiTeyitEt ?? firstActionNode?.KayitSonrasiTeyitEt) !== false
         }
-      }
+      };
 
-      window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
-        detail: {
-          action: effectiveUiAction,
-          route: currentRoute,
-          targetRoute: resolvedTargetRoute,
-          params: resolvedTargetRoute,
-          workflow: item,
-          node: firstActionNode
-        }
-      }));
-
-      if (!shouldWaitForSave && effectivePrompt) {
-        await sendMessage(effectivePrompt);
+      if (appendLocalExchange) {
+        appendLocalExchange(
+          userDisplayText,
+          assistantDisplayText,
+          JSON.stringify(actionCardPayload)
+        );
       }
       return;
     }
