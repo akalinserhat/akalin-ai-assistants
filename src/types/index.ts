@@ -65,6 +65,8 @@ export type AiHizliIstekUiAksiyonu =
   | string;
 
 export type AiAkisDugumuTipi =
+  | 'BASLA'
+  | 'FORM_AC'
   | 'BASLANGIC_GIRDI'
   | 'MCP_SORGULA'
   | 'KARAR_ONAY'
@@ -81,6 +83,14 @@ export interface AiAkisDugumu {
   aracKodu?: string;
   uiAksiyonu?: AiHizliIstekUiAksiyonu;
   hedefRota?: string;
+  mcpVarlikId?: string;
+  modulKodu?: string;
+  modulAdi?: string;
+  varlikKodu?: string;
+  varlikAdi?: string;
+  varlikTuru?: string;
+  kayitBekle?: boolean;
+  kayitSonrasiTeyitEt?: boolean;
   sonrakiDugumId?: string;
   evetDugumId?: string;
   hayirDugumId?: string;
@@ -311,6 +321,8 @@ export interface PromptSuggestion {
   aktifMi?: boolean;
   hizliErisimDugmesi?: boolean;
   dugmeBasligi?: string;
+  tetiklemeAnahtarlari?: string;
+  akisDugumleri?: AiAkisDugumu[];
 }
 
 // ─── MODÜL FABRİKASI SEÇENEKLERİ (MODULE CORE UYUMLU) ───────────────────────

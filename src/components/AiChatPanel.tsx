@@ -255,9 +255,53 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
       if (detail.saved === false || detail.cancelled) {
         lastDispatchedAt = now;
-        const pageLabel = detail.pageTitle || detail.entityType || detail.route || 'Form';
+        const pageLabel = detail.pageTitle || detail.entityLabel || detail.entityType || detail.route || 'Form';
         const cancelMessage = `Açılan "${pageLabel}" ekranını kaydetmeden kapattım. Lütfen nasıl devam etmek istediğimi sor.`;
         sendMessageRef.current(cancelMessage);
+        return;
+      }
+
+      if (detail.saved && Array.isArray(detail.importedFiles) && detail.importedFiles.length > 0) {
+        lastDispatchedAt = now;
+        const files = detail.importedFiles as Array<{
+          dosyaAdi: string;
+          uzanti?: string;
+          boyut?: number;
+          kaynak?: string;
+          bulutDosyaId?: number | string;
+          metinIcerigi?: string;
+        }>;
+
+        const cloudTags = files
+          .filter(f => f.bulutDosyaId)
+          .map(f => `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId}, Tür: ${f.uzanti || 'Belge'})]`)
+          .join('\n');
+
+        const basePrompt = [detail.workflowPrompt, detail.nodePrompt]
+          .map(s => (s || '').trim())
+          .filter(Boolean)
+          .join('\n');
+
+        const fileNames = files.map(f => f.dosyaAdi).join(', ');
+        const extractedBlocks = files
+          .filter(f => f.metinIcerigi)
+          .map(f => `--- [İçeri Aktarılan Dosya: ${f.dosyaAdi}] ---\n${f.metinIcerigi}\n--- [Dosya Sonu: ${f.dosyaAdi}] ---`)
+          .join('\n\n');
+
+        const parts: string[] = [];
+        if (cloudTags) parts.push(cloudTags);
+        if (basePrompt) {
+          parts.push(basePrompt);
+        } else {
+          parts.push(`"${fileNames}" dosyasını içeri aktardım.`);
+        }
+        if (extractedBlocks) {
+          parts.push(extractedBlocks);
+        } else if (!cloudTags) {
+          parts.push(`İçeri aktarılan dosya: ${fileNames}`);
+        }
+
+        sendMessageRef.current(parts.join('\n\n'));
         return;
       }
 
@@ -265,9 +309,14 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         lastDispatchedAt = now;
         const summary = formatSavedEntitySummary(detail.savedData);
         const entityLabel = detail.entityLabel || detail.entityType || detail.route || 'Form';
-        const replyMessage = summary
+        const workflowHeader = [detail.workflowPrompt, detail.nodePrompt]
+          .map(s => (s || '').trim())
+          .filter(Boolean)
+          .join('\n');
+        const bodyMessage = summary
           ? `"${entityLabel}" kaydını aşağıdaki bilgilerle tamamladım:\n${summary}\n\nLütfen kaydedilen bu bilgileri bana özetleyerek teyit et ve görev akışındaki bir sonraki adıma geç.`
           : `"${entityLabel}" kaydını tamamladım. Lütfen kaydedilen bilgileri teyit et ve görev akışındaki bir sonraki adıma geç.`;
+        const replyMessage = workflowHeader ? `${workflowHeader}\n\n${bodyMessage}` : bodyMessage;
         sendMessageRef.current(replyMessage);
       }
     };
@@ -436,11 +485,59 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const handleHizliIstekClick = async (item: AgentHizliIstek) => {
     if (isSending) return;
 
-    const firstNode = Array.isArray(item.akisDugumleri) && item.akisDugumleri.length > 0 ? item.akisDugumleri[0] : null;
-    const effectiveUiAction = (item.uiAksiyonu && item.uiAksiyonu !== 'YOK')
-      ? item.uiAksiyonu
-      : (firstNode?.uiAksiyonu || 'YOK');
-    const effectivePrompt = (item.prompt || firstNode?.prompt || item.baslik || '').trim();
+    const rawNodes: any[] = Array.isArray(item.akisDugumleri)
+      ? item.akisDugumleri
+      : Array.isArray((item as any).AkisDugumleri)
+        ? (item as any).AkisDugumleri
+        : [];
+
+    const baslaNode = rawNodes.find(
+      (n) => (n.id || n.Id) === 'BASLA' || (n.tip || n.Tip) === 'BASLA'
+    );
+    const nextIdFromBasla = baslaNode?.sonrakiDugumId || baslaNode?.SonrakiDugumId;
+    const firstActionNode =
+      (nextIdFromBasla
+        ? rawNodes.find((n) => (n.id || n.Id) === nextIdFromBasla)
+        : null) ||
+      rawNodes.find((n) => (n.id || n.Id) !== 'BASLA' && (n.tip || n.Tip) !== 'BASLA') ||
+      rawNodes[0] ||
+      null;
+
+    const nodeTip = firstActionNode?.tip || firstActionNode?.Tip || '';
+    const nodeUiAction = firstActionNode?.uiAksiyonu || firstActionNode?.UiAksiyonu || '';
+    const nodeVarlikKodu = firstActionNode?.varlikKodu || firstActionNode?.VarlikKodu || '';
+    const nodeTargetRoute =
+      firstActionNode?.hedefRota ||
+      firstActionNode?.HedefRota ||
+      (nodeVarlikKodu === 'dosya-ice-aktar-karti'
+        ? '/araclar/dosya-al'
+        : nodeVarlikKodu === 'dosya-disa-aktar-karti'
+          ? '/araclar/dosya-kaydet'
+          : nodeVarlikKodu === 'bulut-dosyalari-karti'
+            ? '/araclar/bulut-dosyalari'
+            : '');
+
+    const isFormOpenStep =
+      nodeTip === 'FORM_AC' ||
+      nodeTip === 'EKRAN_AC' ||
+      Boolean(nodeTargetRoute) ||
+      nodeUiAction === 'OZEL_ROTA';
+
+    const effectiveUiAction = isFormOpenStep
+      ? (nodeUiAction && nodeUiAction !== 'YOK' ? nodeUiAction : 'OZEL_ROTA')
+      : (item.uiAksiyonu && item.uiAksiyonu !== 'YOK')
+        ? item.uiAksiyonu
+        : (nodeUiAction || 'YOK');
+
+    const effectivePrompt = (
+      item.prompt ||
+      baslaNode?.prompt ||
+      baslaNode?.Prompt ||
+      firstActionNode?.prompt ||
+      firstActionNode?.Prompt ||
+      item.baslik ||
+      ''
+    ).trim();
 
     if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
       setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction });
@@ -455,16 +552,45 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       return;
     }
 
-    if (effectiveUiAction && effectiveUiAction !== 'YOK') {
+    if (isFormOpenStep || (effectiveUiAction && effectiveUiAction !== 'YOK')) {
       const currentRoute = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
+      const resolvedTargetRoute = nodeTargetRoute || item.uiParametreleriJson || '';
+      const shouldWaitForSave = (firstActionNode?.kayitBekle ?? firstActionNode?.KayitBekle) !== false;
+
+      if (typeof sessionStorage !== 'undefined' && shouldWaitForSave) {
+        try {
+          sessionStorage.setItem(
+            'webakus_ai_waiting_entity',
+            JSON.stringify({
+              entityType: nodeVarlikKodu || firstActionNode?.baslik || 'Form',
+              entityLabel: firstActionNode?.varlikAdi || firstActionNode?.VarlikAdi || firstActionNode?.baslik || item.baslik || 'Form',
+              targetUrl: resolvedTargetRoute,
+              workflowId: item.id,
+              workflowTitle: item.baslik,
+              workflowPrompt: effectivePrompt,
+              nodeId: firstActionNode?.id || firstActionNode?.Id,
+              nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
+              kayitSonrasiTeyitEt: (firstActionNode?.kayitSonrasiTeyitEt ?? firstActionNode?.KayitSonrasiTeyitEt) !== false,
+              timestamp: Date.now()
+            })
+          );
+        } catch {
+          // ignore storage errors
+        }
+      }
+
       window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
         detail: {
           action: effectiveUiAction,
           route: currentRoute,
-          params: item.uiParametreleriJson || firstNode?.hedefRota
+          targetRoute: resolvedTargetRoute,
+          params: resolvedTargetRoute,
+          workflow: item,
+          node: firstActionNode
         }
       }));
-      if (effectivePrompt) {
+
+      if (!shouldWaitForSave && effectivePrompt) {
         await sendMessage(effectivePrompt);
       }
       return;

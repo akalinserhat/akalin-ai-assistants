@@ -121,18 +121,48 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
             aktif: a.aktifMi ?? a.aktif ?? true,
             icon: a.ikon || a.icon,
             color: a.renk || a.color,
-            hizliIstekler: Array.isArray(istekler) ? istekler.map((item: any) => ({
-              id: item.id || item.Id,
-              baslik: item.baslik || item.Baslik || '',
-              prompt: item.prompt ?? item.Prompt ?? '',
-              ikon: item.ikon || item.Ikon || 'Sparkles',
-              uiAksiyonu: item.uiAksiyonu || item.UiAksiyonu || 'YOK',
-              uiParametreleriJson: item.uiParametreleriJson || item.UiParametreleriJson,
-              sira: item.sira ?? item.Sira ?? 1,
-              aktifMi: item.aktifMi ?? item.AktifMi ?? true,
-              hizliErisimDugmesi: item.hizliErisimDugmesi ?? item.HizliErisimDugmesi ?? true,
-              dugmeBasligi: item.dugmeBasligi || item.DugmeBasligi || ''
-            })) : [],
+            hizliIstekler: Array.isArray(istekler) ? istekler.map((item: any) => {
+              const rawNodes = item.akisDugumleri || item.AkisDugumleri;
+              const akisDugumleri = Array.isArray(rawNodes)
+                ? rawNodes.map((n: any) => ({
+                    id: n.id || n.Id || '',
+                    tip: n.tip || n.Tip || 'MCP_SORGULA',
+                    baslik: n.baslik || n.Baslik || '',
+                    prompt: n.prompt ?? n.Prompt ?? '',
+                    aracKodu: n.aracKodu || n.AracKodu,
+                    uiAksiyonu: n.uiAksiyonu || n.UiAksiyonu,
+                    hedefRota: n.hedefRota || n.HedefRota,
+                    mcpVarlikId: n.mcpVarlikId || n.McpVarlikId,
+                    modulKodu: n.modulKodu || n.ModulKodu,
+                    modulAdi: n.modulAdi || n.ModulAdi,
+                    varlikKodu: n.varlikKodu || n.VarlikKodu,
+                    varlikAdi: n.varlikAdi || n.VarlikAdi,
+                    varlikTuru: n.varlikTuru || n.VarlikTuru,
+                    kayitBekle: (n.kayitBekle ?? n.KayitBekle) !== false,
+                    kayitSonrasiTeyitEt: (n.kayitSonrasiTeyitEt ?? n.KayitSonrasiTeyitEt) !== false,
+                    sonrakiDugumId: n.sonrakiDugumId || n.SonrakiDugumId,
+                    evetDugumId: n.evetDugumId || n.EvetDugumId,
+                    hayirDugumId: n.hayirDugumId || n.HayirDugumId,
+                    hizliErisimDugmesi: (n.hizliErisimDugmesi ?? n.HizliErisimDugmesi) !== false,
+                    dugmeBasligi: n.dugmeBasligi || n.DugmeBasligi
+                  }))
+                : [];
+
+              return {
+                id: item.id || item.Id,
+                baslik: item.baslik || item.Baslik || '',
+                prompt: item.prompt ?? item.Prompt ?? '',
+                ikon: item.ikon || item.Ikon || 'Sparkles',
+                uiAksiyonu: item.uiAksiyonu || item.UiAksiyonu || 'YOK',
+                uiParametreleriJson: item.uiParametreleriJson || item.UiParametreleriJson,
+                tetiklemeAnahtarlari: item.tetiklemeAnahtarlari || item.TetiklemeAnahtarlari || '',
+                sira: item.sira ?? item.Sira ?? 1,
+                aktifMi: item.aktifMi ?? item.AktifMi ?? true,
+                hizliErisimDugmesi: item.hizliErisimDugmesi ?? item.HizliErisimDugmesi ?? true,
+                dugmeBasligi: item.dugmeBasligi || item.DugmeBasligi || '',
+                akisDugumleri
+              };
+            }) : [],
             hizliIsteklerJson: a.hizliIsteklerJson
           };
         });

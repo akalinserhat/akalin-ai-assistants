@@ -456,18 +456,20 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     const effectiveSuggestions = useMemo<PromptSuggestion[]>(() => {
         if (agentQuickRequests.length > 0) {
             return agentQuickRequests.map((item, idx) => ({
-                id: item.id || `agent_req_${idx}`,
-                title: item.dugmeBasligi?.trim() || item.baslik,
-                baslik: item.dugmeBasligi?.trim() || item.baslik,
-                prompt: item.prompt || item.baslik,
-                icon: renderBaseChatHizliIstekIcon(item.ikon),
-                ikon: item.ikon,
-                uiAksiyonu: item.uiAksiyonu,
-                uiParametreleriJson: item.uiParametreleriJson,
-                sira: item.sira,
-                aktifMi: item.aktifMi,
+                id: item.id || (item as any).Id || `agent_req_${idx}`,
+                title: (item.dugmeBasligi || (item as any).DugmeBasligi || '').trim() || item.baslik || (item as any).Baslik,
+                baslik: (item.dugmeBasligi || (item as any).DugmeBasligi || '').trim() || item.baslik || (item as any).Baslik,
+                prompt: item.prompt || (item as any).Prompt || item.baslik || (item as any).Baslik,
+                icon: renderBaseChatHizliIstekIcon(item.ikon || (item as any).Ikon),
+                ikon: item.ikon || (item as any).Ikon,
+                uiAksiyonu: item.uiAksiyonu || (item as any).UiAksiyonu,
+                uiParametreleriJson: item.uiParametreleriJson || (item as any).UiParametreleriJson,
+                sira: item.sira ?? (item as any).Sira,
+                aktifMi: item.aktifMi ?? (item as any).AktifMi,
                 hizliErisimDugmesi: (item as any).hizliErisimDugmesi ?? (item as any).HizliErisimDugmesi ?? true,
-                dugmeBasligi: item.dugmeBasligi
+                dugmeBasligi: item.dugmeBasligi || (item as any).DugmeBasligi,
+                tetiklemeAnahtarlari: item.tetiklemeAnahtarlari || (item as any).TetiklemeAnahtarlari,
+                akisDugumleri: item.akisDugumleri || (item as any).AkisDugumleri
             }));
         }
         return suggestions || [];
@@ -1560,47 +1562,130 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                 className="base-chat-suggestion-card"
                                                 onClick={async () => {
                                                     if (isGenerating) return;
+                                                    const rawNodes: any[] = Array.isArray(sug.akisDugumleri)
+                                                        ? sug.akisDugumleri
+                                                        : Array.isArray((sug as any).AkisDugumleri)
+                                                            ? (sug as any).AkisDugumleri
+                                                            : [];
+
+                                                    const baslaNode = rawNodes.find(
+                                                        (n) => (n.id || n.Id) === 'BASLA' || (n.tip || n.Tip) === 'BASLA'
+                                                    );
+                                                    const nextIdFromBasla = baslaNode?.sonrakiDugumId || baslaNode?.SonrakiDugumId;
+                                                    const firstActionNode =
+                                                        (nextIdFromBasla
+                                                            ? rawNodes.find((n) => (n.id || n.Id) === nextIdFromBasla)
+                                                            : null) ||
+                                                        rawNodes.find((n) => (n.id || n.Id) !== 'BASLA' && (n.tip || n.Tip) !== 'BASLA') ||
+                                                        rawNodes[0] ||
+                                                        null;
+
+                                                    const nodeTip = firstActionNode?.tip || firstActionNode?.Tip || '';
+                                                    const nodeUiAction = firstActionNode?.uiAksiyonu || firstActionNode?.UiAksiyonu || '';
+                                                    const nodeVarlikKodu = firstActionNode?.varlikKodu || firstActionNode?.VarlikKodu || '';
+                                                    const nodeTargetRoute =
+                                                        firstActionNode?.hedefRota ||
+                                                        firstActionNode?.HedefRota ||
+                                                        (nodeVarlikKodu === 'dosya-ice-aktar-karti'
+                                                            ? '/araclar/dosya-al'
+                                                            : nodeVarlikKodu === 'dosya-disa-aktar-karti'
+                                                                ? '/araclar/dosya-kaydet'
+                                                                : nodeVarlikKodu === 'bulut-dosyalari-karti'
+                                                                    ? '/araclar/bulut-dosyalari'
+                                                                    : '');
+
+                                                    const isFormOpenStep =
+                                                        nodeTip === 'FORM_AC' ||
+                                                        nodeTip === 'EKRAN_AC' ||
+                                                        Boolean(nodeTargetRoute) ||
+                                                        nodeUiAction === 'OZEL_ROTA';
+
+                                                    const effectiveUiAction = isFormOpenStep
+                                                        ? (nodeUiAction && nodeUiAction !== 'YOK' ? nodeUiAction : 'OZEL_ROTA')
+                                                        : (sug.uiAksiyonu && sug.uiAksiyonu !== 'YOK')
+                                                            ? sug.uiAksiyonu
+                                                            : (nodeUiAction || 'YOK');
+
+                                                    const effectivePrompt = (
+                                                        sug.prompt ||
+                                                        baslaNode?.prompt ||
+                                                        baslaNode?.Prompt ||
+                                                        firstActionNode?.prompt ||
+                                                        firstActionNode?.Prompt ||
+                                                        sug.baslik ||
+                                                        sug.title ||
+                                                        ''
+                                                    ).trim();
+
                                                     const item: AgentHizliIstek = {
                                                         id: sug.id ? String(sug.id) : undefined,
                                                         baslik: sug.baslik || sug.title || '',
-                                                        prompt: sug.prompt || sug.baslik || sug.title || '',
+                                                        prompt: effectivePrompt,
                                                         ikon: sug.ikon,
-                                                        uiAksiyonu: sug.uiAksiyonu,
-                                                        uiParametreleriJson: sug.uiParametreleriJson
+                                                        uiAksiyonu: effectiveUiAction,
+                                                        uiParametreleriJson: nodeTargetRoute || sug.uiParametreleriJson,
+                                                        akisDugumleri: rawNodes
                                                     };
 
-                                                    if (item.uiAksiyonu === 'BULUT_DOSYA_SEC') {
+                                                    if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
                                                         setPendingHizliIstek(item);
                                                         setIsCloudPickerOpen(true);
                                                         return;
                                                     }
 
-                                                    if (item.uiAksiyonu === 'METIN_YAPISTIR_MODAL') {
+                                                    if (effectiveUiAction === 'METIN_YAPISTIR_MODAL') {
                                                         setPendingHizliIstek(item);
                                                         setModalInputText('');
                                                         setIsTextModalOpen(true);
                                                         return;
                                                     }
 
-                                                    if (item.uiAksiyonu && item.uiAksiyonu !== 'YOK') {
+                                                    if (isFormOpenStep || (effectiveUiAction && effectiveUiAction !== 'YOK')) {
                                                         const currentRoute = typeof window !== 'undefined' ? window.location.pathname : '';
+                                                        const resolvedTargetRoute = nodeTargetRoute || sug.uiParametreleriJson || '';
+                                                        const shouldWaitForSave = (firstActionNode?.kayitBekle ?? firstActionNode?.KayitBekle) !== false;
+
+                                                        if (typeof sessionStorage !== 'undefined' && shouldWaitForSave) {
+                                                            try {
+                                                                sessionStorage.setItem(
+                                                                    'webakus_ai_waiting_entity',
+                                                                    JSON.stringify({
+                                                                        entityType: nodeVarlikKodu || firstActionNode?.baslik || 'Form',
+                                                                        entityLabel: firstActionNode?.varlikAdi || firstActionNode?.VarlikAdi || firstActionNode?.baslik || item.baslik || 'Form',
+                                                                        targetUrl: resolvedTargetRoute,
+                                                                        workflowId: item.id,
+                                                                        workflowTitle: item.baslik,
+                                                                        workflowPrompt: effectivePrompt,
+                                                                        nodeId: firstActionNode?.id || firstActionNode?.Id,
+                                                                        nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
+                                                                        kayitSonrasiTeyitEt: (firstActionNode?.kayitSonrasiTeyitEt ?? firstActionNode?.KayitSonrasiTeyitEt) !== false,
+                                                                        timestamp: Date.now()
+                                                                    })
+                                                                );
+                                                            } catch {
+                                                                // ignore storage errors
+                                                            }
+                                                        }
+
                                                         window.dispatchEvent(new CustomEvent('ai-trigger-ui-action', {
                                                             detail: {
-                                                                action: item.uiAksiyonu,
+                                                                action: effectiveUiAction,
                                                                 route: currentRoute,
-                                                                params: item.uiParametreleriJson
+                                                                targetRoute: resolvedTargetRoute,
+                                                                params: resolvedTargetRoute,
+                                                                workflow: item,
+                                                                node: firstActionNode
                                                             }
                                                         }));
-                                                        const customPrompt = (sug.prompt || '').trim();
-                                                        if (customPrompt) {
-                                                            await handleSendMessage(customPrompt);
+
+                                                        if (!shouldWaitForSave && effectivePrompt) {
+                                                            await handleSendMessage(effectivePrompt);
                                                         }
                                                         return;
                                                     }
 
-                                                    const textToSend = (item.prompt || item.baslik || '').trim();
-                                                    if (textToSend) {
-                                                        await handleSendMessage(textToSend);
+                                                    if (effectivePrompt) {
+                                                        await handleSendMessage(effectivePrompt);
                                                     }
                                                 }}
                                             >
