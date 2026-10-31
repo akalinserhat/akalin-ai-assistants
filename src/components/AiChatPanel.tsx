@@ -230,7 +230,9 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   };
 
   const resolveWorkflowTemplateExpressions = (templateText: string): string => {
-    if (!templateText || !templateText.includes('{{')) return templateText;
+    if (!templateText || (!templateText.includes('{{') && !templateText.includes('@['))) {
+      return templateText;
+    }
     let map: Record<string, any> = { ...workflowNodeOutputsRef.current };
     try {
       if (typeof sessionStorage !== 'undefined') {
@@ -243,11 +245,12 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       // ignore
     }
 
-    return templateText.replace(/\{\{\s*(\$[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)\s*\}\}/g, (fullMatch, exprPath: string) => {
-      const segments = exprPath.split('.');
+    const resolvePathFromMap = (exprPath: string): string | undefined => {
+      const normalized = exprPath.replace(/\[(\d+)\]/g, '.$1');
+      const segments = normalized.split('.').filter(Boolean);
       const rootKey = segments[0];
       const rootObj = map[rootKey] ?? map['$onceki'];
-      if (!rootObj || typeof rootObj !== 'object') return fullMatch;
+      if (!rootObj || typeof rootObj !== 'object') return undefined;
 
       let cursor: any = rootObj;
       for (let i = 1; i < segments.length; i++) {
@@ -256,17 +259,19 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           break;
         }
         const seg = segments[i];
-        if (typeof cursor === 'object' && seg in cursor) {
+        if (Array.isArray(cursor) && /^\d+$/.test(seg)) {
+          cursor = cursor[parseInt(seg, 10)];
+        } else if (typeof cursor === 'object' && seg in cursor) {
           cursor = cursor[seg];
         } else if (typeof cursor === 'object') {
-          const matchedKey = Object.keys(cursor).find(k => k.toLowerCase() === seg.toLowerCase());
+          const matchedKey = Object.keys(cursor).find((k) => k.toLowerCase() === seg.toLowerCase());
           cursor = matchedKey ? cursor[matchedKey] : undefined;
         } else {
           cursor = undefined;
         }
       }
 
-      if (cursor === undefined || cursor === null) return fullMatch;
+      if (cursor === undefined || cursor === null) return undefined;
       if (typeof cursor === 'string' || typeof cursor === 'number' || typeof cursor === 'boolean') {
         return String(cursor);
       }
@@ -275,7 +280,25 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       } catch {
         return String(cursor);
       }
-    });
+    };
+
+    const withMentionsResolved = templateText.replace(
+      /@\[([^\]]*?)\s*\((\$[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_\[\]]+)*)\)\]/g,
+      (fullMatch, labelText: string, exprPath: string) => {
+        const resolved = resolvePathFromMap(exprPath);
+        if (resolved === undefined) return fullMatch;
+        const cleanLabel = (labelText || '').trim();
+        return cleanLabel ? `${cleanLabel}: ${resolved}` : resolved;
+      }
+    );
+
+    return withMentionsResolved.replace(
+      /\{\{\s*(\$[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_\[\]]+)*)\s*\}\}/g,
+      (fullMatch, exprPath: string) => {
+        const resolved = resolvePathFromMap(exprPath);
+        return resolved !== undefined ? resolved : fullMatch;
+      }
+    );
   };
 
   // Sol ekranda (Cari Kart, Ürün Kartı, Satış Belgesi, Adres vb.) yapılan kayıt veya iptal işlemini yakala (Sihirbaz Handshake)
