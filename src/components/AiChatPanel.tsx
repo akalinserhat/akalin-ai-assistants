@@ -301,21 +301,34 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           return;
         }
 
-        const ekDosyalar = files.map(f => ({
-          dosyaAdi: f.dosyaAdi,
-          dosyaTipi: f.uzanti,
-          dosyaBoyutu: f.boyut,
-          bulutDosyaId: f.bulutDosyaId,
-          metinIcerigi: f.metinIcerigi
-        }));
+        const girdiAyar = nextNode?.oncekiDugumGirdisi || nextNode?.OncekiDugumGirdisi || {};
+        const girdiAktif = girdiAyar.aktifMi !== false;
+        const belgeleriAktar = girdiAktif && girdiAyar.belgeleriAktar !== false;
 
-        const attachmentTags = files
-          .map(f =>
-            f.bulutDosyaId
-              ? `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId}, Tür: ${f.uzanti || 'Belge'})]`
-              : `[📎 Ekli Dosya: ${f.dosyaAdi}]`
-          )
-          .join('\n');
+        const ekDosyalar = belgeleriAktar
+          ? files.map(f => ({
+              dosyaAdi: f.dosyaAdi,
+              dosyaTipi: f.uzanti,
+              dosyaBoyutu: f.boyut,
+              bulutDosyaId: f.bulutDosyaId,
+              metinIcerigi: f.metinIcerigi
+            }))
+          : undefined;
+
+        const attachmentTags = belgeleriAktar
+          ? files
+              .map(f =>
+                f.bulutDosyaId
+                  ? `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId}, Tür: ${f.uzanti || 'Belge'})]`
+                  : `[📎 Ekli Dosya: ${f.dosyaAdi}]`
+              )
+              .join('\n')
+          : '';
+
+        const combinedFileTexts = files
+          .map(f => (f.metinIcerigi ? `--- ${f.dosyaAdi} ---\n${f.metinIcerigi}` : f.dosyaAdi))
+          .filter(Boolean)
+          .join('\n\n');
 
         const nextNodeVarlikAdi = (nextNode?.varlikAdi || nextNode?.VarlikAdi || '').trim();
         const nextNodeVarlikKodu = (nextNode?.varlikKodu || nextNode?.VarlikKodu || '').trim();
@@ -324,13 +337,20 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
             ? `[Hedef MCP Varlığı: ${nextNodeVarlikAdi || nextNodeVarlikKodu}${nextNodeVarlikKodu ? ` (${nextNodeVarlikKodu})` : ''}]`
             : '';
 
-        const nextPrompt = (
+        let nextPrompt = (
           nextNode?.prompt ||
           nextNode?.Prompt ||
           detail.nodePrompt ||
           detail.workflowPrompt ||
           ''
         ).trim();
+
+        // n8n tarzı dinamik değişken ifadelerini çözümle
+        const fileNamesSummary = files.map(f => f.dosyaAdi).join(', ');
+        nextPrompt = nextPrompt
+          .replace(/\{\{\s*\$onceki\.eklenenBelgeler\s*\}\}/g, fileNamesSummary || 'Eklenen Belgeler')
+          .replace(/\{\{\s*\$adim_\d+\.eklenenBelgeler\s*\}\}/g, fileNamesSummary || 'Eklenen Belgeler')
+          .replace(/\{\{\s*\$onceki\.belgeMetinIcerigi\s*\}\}/g, combinedFileTexts || fileNamesSummary);
 
         const messageToSend = [attachmentTags, targetMcpLine, nextPrompt]
           .filter(Boolean)
@@ -350,16 +370,32 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           return;
         }
 
-        const summary = formatSavedEntitySummary(detail.savedData);
+        const girdiAyar = nextNode?.oncekiDugumGirdisi || nextNode?.OncekiDugumGirdisi || {};
+        const girdiAktif = girdiAyar.aktifMi !== false;
+        const formVerileriniAktar = girdiAktif && girdiAyar.formVerileriniAktar !== false;
+
+        const summary = formVerileriniAktar ? formatSavedEntitySummary(detail.savedData) : '';
+        const kayitIdVal =
+          detail.savedData?.id || detail.savedData?.Id || detail.savedData?.kod || '';
         const entityLabel = detail.entityLabel || detail.entityType || detail.route || 'Form';
-        const workflowHeader = [nextNode?.prompt || nextNode?.Prompt, detail.nodePrompt, detail.workflowPrompt]
+
+        let rawNextPrompt = [
+          nextNode?.prompt || nextNode?.Prompt,
+          detail.nodePrompt,
+          detail.workflowPrompt
+        ]
           .map(s => (s || '').trim())
           .filter(Boolean)
           .join('\n');
+
+        rawNextPrompt = rawNextPrompt
+          .replace(/\{\{\s*\$onceki\.kaydedilenVeri\s*\}\}/g, summary || entityLabel)
+          .replace(/\{\{\s*\$onceki\.kayitId\s*\}\}/g, String(kayitIdVal || entityLabel));
+
         const bodyMessage = summary
           ? `"${entityLabel}" kaydını aşağıdaki bilgilerle tamamladım:\n${summary}\n\nLütfen kaydedilen bu bilgileri bana özetleyerek teyit et ve görev akışındaki bir sonraki adıma geç.`
           : `"${entityLabel}" kaydını tamamladım. Lütfen kaydedilen bilgileri teyit et ve görev akışındaki bir sonraki adıma geç.`;
-        const replyMessage = workflowHeader ? `${workflowHeader}\n\n${bodyMessage}` : bodyMessage;
+        const replyMessage = rawNextPrompt ? `${rawNextPrompt}\n\n${bodyMessage}` : bodyMessage;
         sendMessageRef.current(replyMessage);
       }
     };
