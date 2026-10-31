@@ -126,6 +126,7 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
               const rawNodes = item.akisDugumleri || item.AkisDugumleri;
               const akisDugumleri = Array.isArray(rawNodes)
                 ? rawNodes.map((n: any) => ({
+                  ...n,
                   id: n.id || n.Id || '',
                   tip: n.tip || n.Tip || 'MCP_SORGULA',
                   baslik: n.baslik || n.Baslik || '',
@@ -146,7 +147,9 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
                   hayirDugumId: n.hayirDugumId || n.HayirDugumId,
                   hizliErisimDugmesi: (n.hizliErisimDugmesi ?? n.HizliErisimDugmesi) !== false,
                   dugmeBasligi: n.dugmeBasligi || n.DugmeBasligi,
-                  kullaniciMesaji: n.kullaniciMesaji || n.KullaniciMesaji
+                  kullaniciMesaji: n.kullaniciMesaji || n.KullaniciMesaji,
+                  hariciSayfaAyarlari: n.hariciSayfaAyarlari || n.HariciSayfaAyarlari || {},
+                  oncekiDugumGirdisi: n.oncekiDugumGirdisi || n.OncekiDugumGirdisi
                 }))
                 : [];
 

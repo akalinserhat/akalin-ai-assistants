@@ -1709,6 +1709,10 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                             returnRoute: currentRoute,
                                                             uiAksiyonu: effectiveUiAction,
                                                             kayitBekle: shouldWaitForSave,
+                                                            hariciSayfaAyarlari:
+                                                                firstActionNode?.hariciSayfaAyarlari ||
+                                                                firstActionNode?.HariciSayfaAyarlari ||
+                                                                {},
                                                             beklemeMetni: isFileImportEntity
                                                                 ? t('Kullanıcının dosya seçimi / içe aktarımı bekleniyor...')
                                                                 : t('Kullanıcının formu doldurup kaydetmesi bekleniyor...'),
@@ -1723,6 +1727,10 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                                 nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
                                                                 sonrakiDugumId: nextNodeAfterForm ? (nextNodeAfterForm.id || nextNodeAfterForm.Id) : '',
                                                                 sonrakiDugum: nextNodeAfterForm || null,
+                                                                hariciSayfaAyarlari:
+                                                                    firstActionNode?.hariciSayfaAyarlari ||
+                                                                    firstActionNode?.HariciSayfaAyarlari ||
+                                                                    {},
                                                                 kayitSonrasiTeyitEt: (firstActionNode?.kayitSonrasiTeyitEt ?? firstActionNode?.KayitSonrasiTeyitEt) !== false
                                                             }
                                                         };

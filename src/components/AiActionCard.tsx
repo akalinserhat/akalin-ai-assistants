@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AiActionCardProps, AiActionOptionItem } from '../types';
+import { AiChatContext } from '../context/AiChatContext';
 
 const getDefaultRoute = (type?: string): string => {
   if (!type) return '/';
@@ -40,6 +41,7 @@ const getDefaultRoute = (type?: string): string => {
 export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, onSendChatReply }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const chatCtx = React.useContext(AiChatContext);
 
   const data = useMemo<any>(() => {
     try {
@@ -105,18 +107,69 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
   const isFormOpen = eylemTipi === 'FORM_AC' || eylemTipi === 'EKRAN_AC';
   const isNavigation = eylemTipi === 'SAYFAYA_GIT' || eylemTipi === 'NAVIGASYON' || isFormOpen;
 
+  // Güncel ajan tanımlarından bu düğüme ait hariciSayfaAyarlari verisini canlı çözümle
+  const resolveEffectiveExternalSettings = () => {
+    const fromData =
+      data.hariciSayfaAyarlari && typeof data.hariciSayfaAyarlari === 'object'
+        ? data.hariciSayfaAyarlari
+        : {};
+    const fromWaiting =
+      data.waitingEntityPayload?.hariciSayfaAyarlari &&
+      typeof data.waitingEntityPayload.hariciSayfaAyarlari === 'object'
+        ? data.waitingEntityPayload.hariciSayfaAyarlari
+        : {};
+
+    let fromLiveAgent: any = {};
+    const liveAgents = chatCtx?.agents || [];
+    const targetWorkflowId = data.waitingEntityPayload?.workflowId;
+    const targetNodeId = data.waitingEntityPayload?.nodeId;
+
+    for (const agent of liveAgents) {
+      const reqs = agent.hizliIstekler || [];
+      for (const req of reqs) {
+        if (targetWorkflowId && String(req.id) !== String(targetWorkflowId)) continue;
+        const nodes = req.akisDugumleri || [];
+        for (const n of nodes as any[]) {
+          const nId = n.id || n.Id;
+          const nRoute = n.hedefRota || n.HedefRota;
+          const matchesNode =
+            (targetNodeId && String(nId) === String(targetNodeId)) ||
+            (!targetNodeId && targetUrl && nRoute === targetUrl);
+          if (matchesNode) {
+            const nodeExt = n.hariciSayfaAyarlari || n.HariciSayfaAyarlari;
+            if (nodeExt && typeof nodeExt === 'object' && Object.keys(nodeExt).length > 0) {
+              fromLiveAgent = nodeExt;
+              break;
+            }
+          }
+        }
+        if (Object.keys(fromLiveAgent).length > 0) break;
+      }
+      if (Object.keys(fromLiveAgent).length > 0) break;
+    }
+
+    return {
+      ...fromWaiting,
+      ...fromData,
+      ...fromLiveAgent
+    };
+  };
+
   const handleApply = () => {
     const shouldWait = data.kayitBekle !== false;
+    const effectiveExternalSettings = resolveEffectiveExternalSettings();
     try {
       if (shouldWait) {
         const waitingPayload = data.waitingEntityPayload
           ? {
             ...data.waitingEntityPayload,
+            hariciSayfaAyarlari: effectiveExternalSettings,
             timestamp: Date.now()
           }
           : {
             entityType: belgeTuru,
             targetUrl,
+            hariciSayfaAyarlari: effectiveExternalSettings,
             timestamp: Date.now()
           };
         sessionStorage.setItem(
@@ -145,13 +198,14 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
       const originRoute = data.returnRoute || (typeof window !== 'undefined' ? window.location.pathname : '/');
       navigate(targetUrl, {
         state: {
-          initialAiData: data,
+          initialAiData: {
+            ...data,
+            hariciSayfaAyarlari: effectiveExternalSettings
+          },
           fromAiChat: true,
           returnRoute: originRoute,
-          externalSettings:
-            data.hariciSayfaAyarlari || data.waitingEntityPayload?.hariciSayfaAyarlari,
-          hariciSayfaAyarlari:
-            data.hariciSayfaAyarlari || data.waitingEntityPayload?.hariciSayfaAyarlari
+          externalSettings: effectiveExternalSettings,
+          hariciSayfaAyarlari: effectiveExternalSettings
         }
       });
     } else if (isNavigation && targetUrl) {

@@ -287,6 +287,24 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
     refreshAgents();
   }, [refreshSessions, refreshAgents]);
 
+  // Panel açıldığında veya ajan yapılandırması güncellendiğinde ajanları tazele
+  useEffect(() => {
+    if (isOpen) {
+      refreshAgents();
+    }
+  }, [isOpen, refreshAgents]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleAgentsUpdated = () => {
+      refreshAgents();
+    };
+    window.addEventListener('ai-agents-updated', handleAgentsUpdated);
+    return () => {
+      window.removeEventListener('ai-agents-updated', handleAgentsUpdated);
+    };
+  }, [refreshAgents]);
+
   // Aktif oturum değiştiğinde mesajları getir
   useEffect(() => {
     if (!activeSessionId) {
