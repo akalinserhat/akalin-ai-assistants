@@ -115,7 +115,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         : {};
     const fromWaiting =
       data.waitingEntityPayload?.hariciSayfaAyarlari &&
-      typeof data.waitingEntityPayload.hariciSayfaAyarlari === 'object'
+        typeof data.waitingEntityPayload.hariciSayfaAyarlari === 'object'
         ? data.waitingEntityPayload.hariciSayfaAyarlari
         : {};
 
