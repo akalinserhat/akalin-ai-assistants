@@ -403,10 +403,18 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
         const girdiAyar = nextNode?.oncekiDugumGirdisi || nextNode?.OncekiDugumGirdisi || {};
         const girdiAktif = girdiAyar.aktifMi !== false;
-        const belgeleriAktar = girdiAktif && girdiAyar.belgeleriAktar !== false;
+        const bagliBelgeEkleri: Array<{ attachmentMode?: string; expressionPath?: string }> =
+          Array.isArray(girdiAyar.bagliBelgeEkleri) ? girdiAyar.bagliBelgeEkleri : [];
+        const hasFirstFileOnly =
+          bagliBelgeEkleri.some((b) => b.attachmentMode === 'first_file') &&
+          !bagliBelgeEkleri.some((b) => b.attachmentMode === 'all_files');
+        const belgeleriAktar =
+          girdiAktif && (bagliBelgeEkleri.length > 0 || girdiAyar.belgeleriAktar !== false);
+
+        const targetFiles = hasFirstFileOnly ? files.slice(0, 1) : files;
 
         const ekDosyalar = belgeleriAktar
-          ? files.map(f => ({
+          ? targetFiles.map(f => ({
             dosyaAdi: f.dosyaAdi,
             dosyaTipi: f.uzanti,
             dosyaBoyutu: f.boyut,
@@ -416,7 +424,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           : undefined;
 
         const attachmentTags = belgeleriAktar
-          ? files
+          ? targetFiles
             .map(f =>
               f.bulutDosyaId
                 ? `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId}, Tür: ${f.uzanti || 'Belge'})]`
