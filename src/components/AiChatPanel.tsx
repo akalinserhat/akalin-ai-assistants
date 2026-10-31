@@ -196,10 +196,87 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendMessageRef = useRef(sendMessage);
+  const workflowNodeOutputsRef = useRef<Record<string, any>>({});
 
   useEffect(() => {
     sendMessageRef.current = sendMessage;
   }, [sendMessage]);
+
+  // Görev akışı düğümlerinin JSON çıktılarını sakla ve {{ $onceki.belgeVerisi.* }} ifadelerini çözümle
+  const saveWorkflowNodeOutput = (nodeKey: string | undefined, nodeJsonOutput: Record<string, any>) => {
+    try {
+      let existingMap: Record<string, any> = { ...workflowNodeOutputsRef.current };
+      if (typeof sessionStorage !== 'undefined') {
+        const rawStored = sessionStorage.getItem('webakus_ai_workflow_node_outputs');
+        if (rawStored) {
+          existingMap = { ...JSON.parse(rawStored), ...existingMap };
+        }
+      }
+      existingMap['$onceki'] = nodeJsonOutput;
+      if (nodeKey) {
+        const normalizedKey = nodeKey.startsWith('$') ? nodeKey : `$${nodeKey}`;
+        existingMap[normalizedKey] = nodeJsonOutput;
+        if (nodeKey.toUpperCase() === 'BASLA') {
+          existingMap['$basla'] = nodeJsonOutput;
+        }
+      }
+      workflowNodeOutputsRef.current = existingMap;
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('webakus_ai_workflow_node_outputs', JSON.stringify(existingMap));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  const resolveWorkflowTemplateExpressions = (templateText: string): string => {
+    if (!templateText || !templateText.includes('{{')) return templateText;
+    let map: Record<string, any> = { ...workflowNodeOutputsRef.current };
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const rawStored = sessionStorage.getItem('webakus_ai_workflow_node_outputs');
+        if (rawStored) {
+          map = { ...JSON.parse(rawStored), ...map };
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return templateText.replace(/\{\{\s*(\$[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)\s*\}\}/g, (fullMatch, exprPath: string) => {
+      const segments = exprPath.split('.');
+      const rootKey = segments[0];
+      const rootObj = map[rootKey] ?? map['$onceki'];
+      if (!rootObj || typeof rootObj !== 'object') return fullMatch;
+
+      let cursor: any = rootObj;
+      for (let i = 1; i < segments.length; i++) {
+        if (cursor === null || cursor === undefined) {
+          cursor = undefined;
+          break;
+        }
+        const seg = segments[i];
+        if (typeof cursor === 'object' && seg in cursor) {
+          cursor = cursor[seg];
+        } else if (typeof cursor === 'object') {
+          const matchedKey = Object.keys(cursor).find(k => k.toLowerCase() === seg.toLowerCase());
+          cursor = matchedKey ? cursor[matchedKey] : undefined;
+        } else {
+          cursor = undefined;
+        }
+      }
+
+      if (cursor === undefined || cursor === null) return fullMatch;
+      if (typeof cursor === 'string' || typeof cursor === 'number' || typeof cursor === 'boolean') {
+        return String(cursor);
+      }
+      try {
+        return JSON.stringify(cursor, null, 2);
+      } catch {
+        return String(cursor);
+      }
+    });
+  };
 
   // Sol ekranda (Cari Kart, Ürün Kartı, Satış Belgesi, Adres vb.) yapılan kayıt veya iptal işlemini yakala (Sihirbaz Handshake)
   useEffect(() => {
@@ -307,28 +384,50 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
         const ekDosyalar = belgeleriAktar
           ? files.map(f => ({
-              dosyaAdi: f.dosyaAdi,
-              dosyaTipi: f.uzanti,
-              dosyaBoyutu: f.boyut,
-              bulutDosyaId: f.bulutDosyaId,
-              metinIcerigi: f.metinIcerigi
-            }))
+            dosyaAdi: f.dosyaAdi,
+            dosyaTipi: f.uzanti,
+            dosyaBoyutu: f.boyut,
+            bulutDosyaId: f.bulutDosyaId,
+            metinIcerigi: f.metinIcerigi
+          }))
           : undefined;
 
         const attachmentTags = belgeleriAktar
           ? files
-              .map(f =>
-                f.bulutDosyaId
-                  ? `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId}, Tür: ${f.uzanti || 'Belge'})]`
-                  : `[📎 Ekli Dosya: ${f.dosyaAdi}]`
-              )
-              .join('\n')
+            .map(f =>
+              f.bulutDosyaId
+                ? `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.bulutDosyaId}, Tür: ${f.uzanti || 'Belge'})]`
+                : `[📎 Ekli Dosya: ${f.dosyaAdi}]`
+            )
+            .join('\n')
           : '';
 
         const combinedFileTexts = files
           .map(f => (f.metinIcerigi ? `--- ${f.dosyaAdi} ---\n${f.metinIcerigi}` : f.dosyaAdi))
           .filter(Boolean)
           .join('\n\n');
+
+        // "Form Aç" düğümünün JSON verisi içerisine açtığı belgenin / kartın JSON verisini (belgeVerisi) yerleştir
+        const fileNamesArray = files.map(f => f.dosyaAdi);
+        const fileNamesSummary = fileNamesArray.join(', ');
+        const belgeVerisiObj = {
+          ...(detail.savedData && typeof detail.savedData === 'object' ? detail.savedData : {}),
+          dosyaSayisi: files.length,
+          dosyalar: fileNamesArray,
+          importedFiles: files,
+          birlestirilmisMetin: combinedFileTexts
+        };
+        const formAcNodeJsonOutput = {
+          acilanVarlikAdi: detail.entityLabel || 'Dosya İçeri Aktar',
+          acilanVarlikKodu: detail.varlikKodu || detail.entityType || 'dosya-ice-aktar-karti',
+          acilanVarlikTuru: detail.varlikTuru || 'kart',
+          belgeVerisi: belgeVerisiObj,
+          kaydedilenVeri: belgeVerisiObj,
+          kayitId: '',
+          eklenenBelgeler: fileNamesArray,
+          belgeMetinIcerigi: combinedFileTexts || fileNamesSummary
+        };
+        saveWorkflowNodeOutput(detail.nodeId || 'adim_1', formAcNodeJsonOutput);
 
         const nextNodeVarlikAdi = (nextNode?.varlikAdi || nextNode?.VarlikAdi || '').trim();
         const nextNodeVarlikKodu = (nextNode?.varlikKodu || nextNode?.VarlikKodu || '').trim();
@@ -345,9 +444,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           ''
         ).trim();
 
-        // n8n tarzı dinamik değişken ifadelerini çözümle
-        const fileNamesSummary = files.map(f => f.dosyaAdi).join(', ');
-        nextPrompt = nextPrompt
+        // n8n tarzı dinamik {{ $onceki.belgeVerisi.* }} ve {{ $onceki.* }} değişken ifadelerini çözümle
+        nextPrompt = resolveWorkflowTemplateExpressions(nextPrompt)
           .replace(/\{\{\s*\$onceki\.eklenenBelgeler\s*\}\}/g, fileNamesSummary || 'Eklenen Belgeler')
           .replace(/\{\{\s*\$adim_\d+\.eklenenBelgeler\s*\}\}/g, fileNamesSummary || 'Eklenen Belgeler')
           .replace(/\{\{\s*\$onceki\.belgeMetinIcerigi\s*\}\}/g, combinedFileTexts || fileNamesSummary);
@@ -374,10 +472,24 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         const girdiAktif = girdiAyar.aktifMi !== false;
         const formVerileriniAktar = girdiAktif && girdiAyar.formVerileriniAktar !== false;
 
-        const summary = formVerileriniAktar ? formatSavedEntitySummary(detail.savedData) : '';
+        const belgeVerisiObj = detail.belgeVerisi || detail.savedData || {};
+        const summary = formVerileriniAktar ? formatSavedEntitySummary(belgeVerisiObj) : '';
         const kayitIdVal =
-          detail.savedData?.id || detail.savedData?.Id || detail.savedData?.kod || '';
+          belgeVerisiObj?.id || belgeVerisiObj?.Id || belgeVerisiObj?.kod || '';
         const entityLabel = detail.entityLabel || detail.entityType || detail.route || 'Form';
+
+        // "Form Aç" düğümünün JSON verisi içerisine açtığı belgenin / kartın JSON verisini (belgeVerisi) yerleştir
+        const formAcNodeJsonOutput = {
+          acilanVarlikAdi: entityLabel,
+          acilanVarlikKodu: detail.varlikKodu || detail.entityType || '',
+          acilanVarlikTuru: detail.varlikTuru || 'belge',
+          belgeVerisi: belgeVerisiObj,
+          kaydedilenVeri: belgeVerisiObj,
+          kayitId: kayitIdVal,
+          eklenenBelgeler: [],
+          belgeMetinIcerigi: summary
+        };
+        saveWorkflowNodeOutput(detail.nodeId || 'adim_1', formAcNodeJsonOutput);
 
         let rawNextPrompt = [
           nextNode?.prompt || nextNode?.Prompt,
@@ -388,12 +500,16 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           .filter(Boolean)
           .join('\n');
 
-        rawNextPrompt = rawNextPrompt
+        rawNextPrompt = resolveWorkflowTemplateExpressions(rawNextPrompt)
           .replace(/\{\{\s*\$onceki\.kaydedilenVeri\s*\}\}/g, summary || entityLabel)
           .replace(/\{\{\s*\$onceki\.kayitId\s*\}\}/g, String(kayitIdVal || entityLabel));
 
+        const belgeJsonBlock = formVerileriniAktar
+          ? `[Önceki Düğümden Aktarılan Belge/Kart JSON Verisi (belgeVerisi)]:\n\`\`\`json\n${JSON.stringify(belgeVerisiObj, null, 2)}\n\`\`\``
+          : '';
+
         const bodyMessage = summary
-          ? `"${entityLabel}" kaydını aşağıdaki bilgilerle tamamladım:\n${summary}\n\nLütfen kaydedilen bu bilgileri bana özetleyerek teyit et ve görev akışındaki bir sonraki adıma geç.`
+          ? `"${entityLabel}" kaydını aşağıdaki bilgilerle tamamladım:\n${summary}\n\n${belgeJsonBlock}\n\nLütfen kaydedilen bu bilgileri bana özetleyerek teyit et ve görev akışındaki bir sonraki adıma geç.`
           : `"${entityLabel}" kaydını tamamladım. Lütfen kaydedilen bilgileri teyit et ve görev akışındaki bir sonraki adıma geç.`;
         const replyMessage = rawNextPrompt ? `${rawNextPrompt}\n\n${bodyMessage}` : bodyMessage;
         sendMessageRef.current(replyMessage);
@@ -646,7 +762,18 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       ''
     ).trim();
 
-    const effectivePrompt = [targetMcpDirective, rawEffectivePrompt].filter(Boolean).join('\n\n');
+    // "Başla" düğümünün JSON Schema verisini kaydet ($basla ve $onceki)
+    const currentRouteForBasla = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
+    const baslaNodeJsonOutput = {
+      kullaniciIstegi: item.dugmeBasligi || item.baslik || rawEffectivePrompt,
+      baslangicTalimati: baslaNode?.prompt || baslaNode?.Prompt || item.prompt || rawEffectivePrompt,
+      tetikleyiciBaslik: baslaNode?.dugmeBasligi || baslaNode?.DugmeBasligi || item.dugmeBasligi || item.baslik || '',
+      aktifSayfaRotasi: currentRouteForBasla
+    };
+    saveWorkflowNodeOutput('BASLA', baslaNodeJsonOutput);
+
+    const resolvedEffectivePrompt = resolveWorkflowTemplateExpressions(rawEffectivePrompt);
+    const effectivePrompt = [targetMcpDirective, resolvedEffectivePrompt].filter(Boolean).join('\n\n');
 
     if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
       setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction });
@@ -739,6 +866,9 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         waitingEntityPayload: {
           entityType: nodeVarlikKodu || firstActionNode?.baslik || 'Form',
           entityLabel,
+          varlikKodu: nodeVarlikKodu,
+          varlikTuru: firstActionNode?.varlikTuru || firstActionNode?.VarlikTuru || '',
+          modulKodu: firstActionNode?.modulKodu || firstActionNode?.ModulKodu || '',
           targetUrl: resolvedTargetRoute,
           workflowId: item.id,
           workflowTitle: item.baslik,
@@ -747,6 +877,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
           sonrakiDugumId: nextNodeAfterForm ? (nextNodeAfterForm.id || nextNodeAfterForm.Id) : '',
           sonrakiDugum: nextNodeAfterForm || null,
+          akisDugumleri: rawNodes,
           hariciSayfaAyarlari:
             firstActionNode?.hariciSayfaAyarlari ||
             firstActionNode?.HariciSayfaAyarlari ||
