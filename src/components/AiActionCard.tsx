@@ -240,6 +240,45 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
       ? 'waiting'
       : '';
 
+  if (isFormOpen) {
+    return (
+      <div className="ai-form-open-inline-container">
+        <div className="ai-form-open-inline-actions">
+          <button
+            type="button"
+            onClick={handleApply}
+            className="ai-action-card-btn accent"
+          >
+            <ExternalLink size={14} />
+            <span>{data.butonYazisi || t('Ekranı Aç')}</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+
+        {isWaiting && (
+          <div className="ai-action-card-progress">
+            <div className="ai-action-card-progress-track">
+              <div className="ai-action-card-progress-bar-moving" />
+            </div>
+            <div className="ai-action-card-progress-status">
+              <span className="ai-pulse-dot" />
+              <span>
+                {data.beklemeMetni || t('Kullanıcının dosya seçimi / içe aktarımı bekleniyor...')}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {isResolved && !isWaiting && (
+          <div className="ai-action-card-resolved-note ai-form-open-resolved-centered">
+            <CheckCircle2 size={14} />
+            <span>{t('İşlem tamamlandı.')}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={`ai-action-card ${cardStateClass}`}>
       <div className="ai-action-card-header">

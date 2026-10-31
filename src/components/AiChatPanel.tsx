@@ -1185,6 +1185,17 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
             }
           }
 
+          const isFormOpenAction = (() => {
+            if (!m.eylemVerisiJson) return false;
+            try {
+              const parsed = JSON.parse(m.eylemVerisiJson);
+              const eylemTipi = parsed?.eylemTipi || parsed?.actionType || parsed?.action || '';
+              return eylemTipi === 'FORM_AC' || eylemTipi === 'EKRAN_AC';
+            } catch {
+              return false;
+            }
+          })();
+
           return (
             <div key={m.id} className={`ai-message-row ${m.role === 'user' ? 'ai-message-row-user' : 'ai-message-row-assistant'}`}>
               {m.role === 'assistant' && (
@@ -1198,6 +1209,14 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
                   <div className="ai-message-text">
                     <AiMarkdownContent content={cleanText} baseKey={m.id} />
                   </div>
+
+                  {isFormOpenAction && m.eylemVerisiJson && (
+                    <AiActionCard
+                      rawJson={m.eylemVerisiJson}
+                      onApply={onApplyAiData}
+                      onSendChatReply={(replyText) => sendMessage(replyText)}
+                    />
+                  )}
 
                   {m.role === 'assistant' && (
                     <div className={`ai-message-source-badge ${m.canliLlmMi ? 'live-llm' : 'local-rule'}`}>
@@ -1226,7 +1245,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
                   />
                 )}
 
-                {m.eylemVerisiJson && (
+                {!isFormOpenAction && m.eylemVerisiJson && (
                   <AiActionCard
                     rawJson={m.eylemVerisiJson}
                     onApply={onApplyAiData}

@@ -968,6 +968,27 @@
 }
 
 /* ─── AI Action Card & Approval/Selection Styles ─────────────────────────────── */
+.ai-form-open-inline-container {
+  margin-top: 12px;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.ai-form-open-inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.ai-form-open-resolved-centered {
+  justify-content: center;
+}
+
 .ai-action-card {
   margin-top: 12px;
   padding: 12px 14px;
