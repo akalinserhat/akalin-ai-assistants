@@ -52,6 +52,7 @@ export interface CloudFileItem {
   belgeTuru?: string;
   bulutDosyaId?: number | string;
   metinIcerigi?: string;
+  base64Verisi?: string;
 }
 
 export interface AiAttachedFilePayload {
@@ -60,6 +61,7 @@ export interface AiAttachedFilePayload {
   dosyaBoyutu?: number;
   bulutDosyaId?: number | string;
   metinIcerigi?: string;
+  base64Verisi?: string;
 }
 
 // ─── UZMAN AJAN TİPLERİ ─────────────────────────────────────────────────────

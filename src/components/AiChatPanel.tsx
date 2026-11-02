@@ -368,6 +368,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           kaynak?: string;
           bulutDosyaId?: number | string;
           metinIcerigi?: string;
+          base64Verisi?: string;
         }>;
 
         const importedAttachmentItems: CloudFileItem[] = files.map((f, idx) => ({
@@ -376,7 +377,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           dosyaBoyutu: f.boyut,
           dosyaTipi: f.uzanti,
           bulutDosyaId: f.bulutDosyaId,
-          metinIcerigi: f.metinIcerigi
+          metinIcerigi: f.metinIcerigi,
+          base64Verisi: f.base64Verisi
         }));
 
         setAttachedFiles(prev => {
@@ -419,7 +421,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
             dosyaTipi: f.uzanti,
             dosyaBoyutu: f.boyut,
             bulutDosyaId: f.bulutDosyaId,
-            metinIcerigi: f.metinIcerigi
+            metinIcerigi: f.metinIcerigi,
+            base64Verisi: f.base64Verisi
           }))
           : undefined;
 
@@ -654,7 +657,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       dosyaTipi: f.dosyaTipi,
       dosyaBoyutu: f.dosyaBoyutu,
       bulutDosyaId: f.bulutDosyaId || (typeof f.id === 'number' ? f.id : undefined),
-      metinIcerigi: f.metinIcerigi
+      metinIcerigi: f.metinIcerigi,
+      base64Verisi: f.base64Verisi
     }));
 
     if (attachedFiles.length > 0) {
@@ -934,11 +938,12 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           dosyaTipi: f.dosyaTipi,
           dosyaBoyutu: f.dosyaBoyutu,
           bulutDosyaId: f.bulutDosyaId || f.id,
-          metinIcerigi: f.metinIcerigi
+          metinIcerigi: f.metinIcerigi,
+          base64Verisi: f.base64Verisi
         }));
         const fileTags = attachedFiles
           .map(f =>
-            f.metinIcerigi && !f.bulutDosyaId
+            (f.base64Verisi || f.metinIcerigi) && !f.bulutDosyaId
               ? `[📎 Ekli Dosya: ${f.dosyaAdi}]`
               : `[📎 Bulut Dosyası: ${f.dosyaAdi} (ID: ${f.id}, Tür: ${f.dosyaTipi || 'Belge'})]`
           )
