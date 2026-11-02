@@ -540,6 +540,25 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
     }
   }, [activeSessionId, isSending, selectedAgentId, pageContext]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleSendPromptEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<any>;
+      const detail = customEvent?.detail;
+      if (!detail || !detail.prompt) return;
+      openPanel();
+      sendMessage(
+        String(detail.prompt),
+        detail.agentId ? Number(detail.agentId) : undefined,
+        Array.isArray(detail.ekDosyalar) ? detail.ekDosyalar : undefined
+      );
+    };
+    window.addEventListener('webakus:ai-assistant-send-prompt', handleSendPromptEvent as EventListener);
+    return () => {
+      window.removeEventListener('webakus:ai-assistant-send-prompt', handleSendPromptEvent as EventListener);
+    };
+  }, [openPanel, sendMessage]);
+
   return (
     <AiChatContext.Provider
       value={{

@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -18,8 +22,13 @@
     "noUncheckedSideEffectImports": false,
     "allowJs": true,
     "paths": {
-      "@akalin/ui": ["../akalin-ui/src/index.ts", "../ui/src/index.ts"]
+      "@akalin/ui": [
+        "../akalin-ui/src/index.ts",
+        "../ui/src/index.ts"
+      ]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

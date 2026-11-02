@@ -442,13 +442,21 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           .join('\n\n');
 
         // "Form Aç" düğümünün JSON verisi içerisine açtığı belgenin / kartın JSON verisini (belgeVerisi) yerleştir
+        // (base64Verisi ekDosyalar üzerinden ikili ek olarak gönderildiği için metin şablonlarına ve sessionStorage'a sızmaması adına hariç tutulur)
         const fileNamesArray = files.map(f => f.dosyaAdi);
         const fileNamesSummary = fileNamesArray.join(', ');
+        const sanitizedImportedFilesForOutput = files.map(f => ({
+          dosyaAdi: f.dosyaAdi,
+          uzanti: f.uzanti,
+          boyut: f.boyut,
+          kaynak: f.kaynak,
+          bulutDosyaId: f.bulutDosyaId
+        }));
         const belgeVerisiObj = {
           ...(detail.savedData && typeof detail.savedData === 'object' ? detail.savedData : {}),
           dosyaSayisi: files.length,
           dosyalar: fileNamesArray,
-          importedFiles: files,
+          importedFiles: sanitizedImportedFilesForOutput,
           birlestirilmisMetin: combinedFileTexts
         };
         const formAcNodeJsonOutput = {
@@ -479,10 +487,13 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         ).trim();
 
         // n8n tarzı dinamik {{ $onceki.belgeVerisi.* }} ve {{ $onceki.* }} değişken ifadelerini çözümle
-        nextPrompt = resolveWorkflowTemplateExpressions(nextPrompt)
+        nextPrompt = nextPrompt
+          .replace(/\{\{\s*\$onceki\.belgeVerisi\.importedFiles\s*\}\}/g, fileNamesSummary || 'Eklenen Belgeler')
+          .replace(/\{\{\s*\$adim_\d+\.belgeVerisi\.importedFiles\s*\}\}/g, fileNamesSummary || 'Eklenen Belgeler')
           .replace(/\{\{\s*\$onceki\.eklenenBelgeler\s*\}\}/g, fileNamesSummary || 'Eklenen Belgeler')
           .replace(/\{\{\s*\$adim_\d+\.eklenenBelgeler\s*\}\}/g, fileNamesSummary || 'Eklenen Belgeler')
           .replace(/\{\{\s*\$onceki\.belgeMetinIcerigi\s*\}\}/g, combinedFileTexts || fileNamesSummary);
+        nextPrompt = resolveWorkflowTemplateExpressions(nextPrompt);
 
         const messageToSend = [attachmentTags, targetMcpLine, nextPrompt]
           .filter(Boolean)
@@ -1398,9 +1409,17 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
             if (pendingHizliIstek) {
               const basePrompt = (pendingHizliIstek.prompt || pendingHizliIstek.baslik || '').trim();
-              const combinedPrompt = `${basePrompt}\n\n[Eklenen Bulut Dosyası: ${file.dosyaAdi} (ID: ${file.id}, URL: ${file.url})]`;
+              const combinedPrompt = `[📎 Bulut Dosyası: ${file.dosyaAdi} (ID: ${file.id}, Tür: ${file.dosyaTipi || 'Belge'})]\n\n${basePrompt}`;
+              const cloudEkDosyalar = [
+                {
+                  dosyaAdi: file.dosyaAdi,
+                  dosyaTipi: file.dosyaTipi,
+                  dosyaBoyutu: file.dosyaBoyutu,
+                  bulutDosyaId: file.id
+                }
+              ];
               setPendingHizliIstek(null);
-              await sendMessage(combinedPrompt);
+              await sendMessage(combinedPrompt, undefined, cloudEkDosyalar);
               return;
             }
 
