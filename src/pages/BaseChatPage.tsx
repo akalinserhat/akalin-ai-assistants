@@ -1664,8 +1664,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                             configuredNodeMessage ||
                                                             (isFileImportEntity
                                                                 ? t(
-                                                                    'kampanya_yazisi_import_yonergesi',
-                                                                    'Kampanya yazısını içeri aktarmak için aşağıdaki düğmeye basın.'
+                                                                    'belge_import_yonergesi',
+                                                                    'İlgili belgeyi içeri aktarmak için aşağıdaki düğmeye basın.'
                                                                 )
                                                                 : t(
                                                                     'form_ac_varsayilan_yonerge',

@@ -31,6 +31,14 @@ export const DEFAULT_SYSTEM_AGENTS: AgentDefinition[] = [
     color: '#3b82f6'
   },
   {
+    id: 6,
+    kod: 'FIYAT_FARKI_UZMANI',
+    ad: 'Fiyat Farkı Uzmanı',
+    aciklama: 'BSH ve tedarikçi uygulama yazılarından fiyat farkı tablolarını analiz eder ve belge oluşturur.',
+    icon: 'Tag',
+    color: '#2563eb'
+  },
+  {
     id: 2,
     kod: 'STOK_UZMANI',
     ad: 'Stok & Depo Uzmanı',
@@ -72,10 +80,14 @@ export const DEFAULT_SYSTEM_AGENTS: AgentDefinition[] = [
 export const resolveRouteToAgentCode = (pathname: string): string | null => {
   const cleanPath = (pathname || '').split('?')[0].toLowerCase();
 
-  // 1. Kampanyalar & Fiyat Farkı & Fiyat Listeleri
+  // 1. BSH Fiyat Farkı
+  if (cleanPath.startsWith('/bsh-fiyat-farki')) {
+    return 'FIYAT_FARKI_UZMANI';
+  }
+
+  // 2. Kampanyalar & Fiyat Listeleri
   if (
     cleanPath.startsWith('/kampanyalar') ||
-    cleanPath.startsWith('/bsh-fiyat-farki') ||
     cleanPath.startsWith('/fiyat-listeleri') ||
     cleanPath.startsWith('/fiyat-liste-tanimlari')
   ) {
@@ -151,14 +163,62 @@ export const matchAgentForRoute = (route: string, agents: AgentDefinition[]): Ag
   const targetCode = resolveRouteToAgentCode(route);
   if (!targetCode) return null;
 
+  if (targetCode === 'FIYAT_FARKI_UZMANI') {
+    const fiyatFarkiAgent = agents.find(a =>
+      (a.kod && a.kod.toUpperCase() === 'FIYAT_FARKI_UZMANI') ||
+      a.ad?.toLowerCase().includes('fiyat farkı') ||
+      a.ad?.toLowerCase().includes('fiyat farki')
+    );
+    if (fiyatFarkiAgent) return fiyatFarkiAgent;
+  }
+
   return agents.find(a =>
     (a.kod && a.kod.toUpperCase() === targetCode.toUpperCase()) ||
-    (targetCode === 'KAMPANYA_UZMANI' && (a.ad?.toLowerCase().includes('kampanya') || a.ad?.toLowerCase().includes('fiyat farkı'))) ||
+    (targetCode === 'KAMPANYA_UZMANI' && a.ad?.toLowerCase().includes('kampanya')) ||
     (targetCode === 'STOK_UZMANI' && (a.ad?.toLowerCase().includes('stok') || a.ad?.toLowerCase().includes('envanter'))) ||
     (targetCode === 'SIPARIS_ASISTANI' && (a.ad?.toLowerCase().includes('sipariş') || a.ad?.toLowerCase().includes('fatura') || a.ad?.toLowerCase().includes('belge'))) ||
     (targetCode === 'FINANS_UZMANI' && (a.ad?.toLowerCase().includes('finans') || a.ad?.toLowerCase().includes('cari'))) ||
     (targetCode === 'ADMIN_SISTEM_UZMANI' && (a.ad?.toLowerCase().includes('admin') || a.ad?.toLowerCase().includes('sistem')))
   ) || null;
+};
+
+/**
+ * sessionStorage'daki webakus_ai_waiting_entity kaydının mevcut rota için hala geçerli olup olmadığını kontrol eder.
+ * Kullanıcı bambaşka bir modül/sayfaya geçmişse eski bekleme kaydını temizler.
+ */
+const checkAndCleanupWizardWaitingState = (currentRoute?: string): boolean => {
+  if (typeof sessionStorage === 'undefined') return false;
+  const raw = sessionStorage.getItem('webakus_ai_waiting_entity');
+  if (!raw) return false;
+
+  try {
+    const parsed = JSON.parse(raw);
+    const now = Date.now();
+    // 10 dakikadan eski bekleme kayıtlarını temizle
+    if (parsed?.timestamp && now - Number(parsed.timestamp) > 10 * 60 * 1000) {
+      sessionStorage.removeItem('webakus_ai_waiting_entity');
+      return false;
+    }
+
+    if (currentRoute) {
+      const cleanRoute = currentRoute.split('?')[0].toLowerCase();
+      const targetUrl = String(parsed?.targetUrl || '').split('?')[0].toLowerCase();
+      const returnRoute = String(parsed?.returnRoute || '').split('?')[0].toLowerCase();
+
+      const matchesTarget = Boolean(targetUrl && (cleanRoute === targetUrl || cleanRoute.startsWith(targetUrl)));
+      const matchesReturn = Boolean(returnRoute && (cleanRoute === returnRoute || cleanRoute.startsWith(returnRoute) || returnRoute.startsWith(cleanRoute)));
+
+      if ((targetUrl || returnRoute) && !matchesTarget && !matchesReturn) {
+        sessionStorage.removeItem('webakus_ai_waiting_entity');
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    sessionStorage.removeItem('webakus_ai_waiting_entity');
+    return false;
+  }
 };
 
 // ─── CONTEXT TANIMI ─────────────────────────────────────────────────────────
@@ -227,9 +287,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
   const setPageContext = useCallback((newContext: AiPageContext | ((prev: AiPageContext) => AiPageContext)) => {
     setPageContextState(prev => {
       const next = typeof newContext === 'function' ? newContext(prev) : newContext;
-      const isWaitingForWizardForm =
-        typeof sessionStorage !== 'undefined' &&
-        Boolean(sessionStorage.getItem('webakus_ai_waiting_entity'));
+      const isWaitingForWizardForm = checkAndCleanupWizardWaitingState(next.route);
 
       if (next.route && prev.route && next.route !== prev.route && !isWaitingForWizardForm) {
         setActiveSessionId(null);
@@ -244,9 +302,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
 
   // Sayfa rotasına göre ajanı otomatik öner (Sihirbaz Form Açma beklemesi sırasında mevcut ajanı koru)
   useEffect(() => {
-    const isWaitingForWizardForm =
-      typeof sessionStorage !== 'undefined' &&
-      Boolean(sessionStorage.getItem('webakus_ai_waiting_entity'));
+    const isWaitingForWizardForm = checkAndCleanupWizardWaitingState(pageContext.route);
     if (isWaitingForWizardForm) return;
 
     if (pageContext.route && agents.length > 0) {

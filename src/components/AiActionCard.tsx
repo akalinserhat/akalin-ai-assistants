@@ -27,6 +27,7 @@ const getDefaultRoute = (type?: string): string => {
   if (!type) return '/';
   const lower = type.toLowerCase();
   if (lower.includes('kampanya')) return '/kampanyalar/yeni';
+  if (lower.includes('bsh') || lower.includes('fiyatfarki') || lower.includes('fiyat fark') || lower.includes('fiyat-fark') || lower.includes('fiyat_fark')) return '/bsh-fiyat-farki/yeni';
   if (lower.includes('fiyat')) return '/fiyat-listeleri/yeni';
   if (lower.includes('siparis') && (lower.includes('verilen') || lower.includes('alis'))) return '/siparisler/verilen/yeni';
   if (lower.includes('siparis')) return '/siparisler/alinan/yeni';
@@ -98,8 +99,13 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
     eylemTipi === 'DOSYA_BEKLENIYOR' ||
     eylemTipi === 'KULLANICI_BEKLENIYOR';
 
+  const lowerBelge = belgeTuru.toLowerCase();
   const defaultRoute = isExcelImport
-    ? (belgeTuru.toLowerCase().includes('kampanya') ? '/kampanyalar/yeni/excel-import' : '/fiyat-listeleri/yeni/excel-import')
+    ? (lowerBelge.includes('kampanya')
+      ? '/kampanyalar/yeni/excel-import'
+      : (lowerBelge.includes('bsh') || lowerBelge.includes('fiyatfarki') || lowerBelge.includes('fiyat fark') || lowerBelge.includes('fiyat-fark'))
+        ? '/bsh-fiyat-farki/yeni/excel-import'
+        : '/fiyat-listeleri/yeni/excel-import')
     : getDefaultRoute(belgeTuru);
   const targetUrl = data.yonlendirmeUrl || data.targetUrl || defaultRoute;
   const kalemSayisi = data.kalemler?.length || data.items?.length || 0;
@@ -158,17 +164,21 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
   const handleApply = () => {
     const shouldWait = data.kayitBekle !== false;
     const effectiveExternalSettings = resolveEffectiveExternalSettings();
+    const originRoute = data.returnRoute || (typeof window !== 'undefined' ? window.location.pathname : '/');
     try {
       if (shouldWait) {
         const waitingPayload = data.waitingEntityPayload
           ? {
             ...data.waitingEntityPayload,
+            targetUrl: data.waitingEntityPayload.targetUrl || targetUrl,
+            returnRoute: data.waitingEntityPayload.returnRoute || originRoute,
             hariciSayfaAyarlari: effectiveExternalSettings,
             timestamp: Date.now()
           }
           : {
             entityType: belgeTuru,
             targetUrl,
+            returnRoute: originRoute,
             hariciSayfaAyarlari: effectiveExternalSettings,
             timestamp: Date.now()
           };

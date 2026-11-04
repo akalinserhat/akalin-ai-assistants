@@ -130,6 +130,13 @@ const resolveRouteToDocContext = (pathname: string) => {
       documentId: idMatch ? parseInt(idMatch[1], 10) : undefined
     };
   }
+  if (cleanPath.startsWith('/bsh-fiyat-farki')) {
+    const idMatch = cleanPath.match(/\/bsh-fiyat-farki\/(\d+)/) || cleanPath.match(/\/bsh-fiyat-farki\/duzenle\/(\d+)/);
+    return {
+      documentType: 'BshFiyatFarki',
+      documentId: idMatch ? parseInt(idMatch[1], 10) : undefined
+    };
+  }
   if (cleanPath.startsWith('/cariler')) {
     const idMatch = cleanPath.match(/\/cariler\/(\d+)/) || cleanPath.match(/\/cariler\/duzenle\/(\d+)/);
     return {
@@ -498,8 +505,22 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         const messageToSend = [attachmentTags, targetMcpLine, nextPrompt]
           .filter(Boolean)
           .join('\n\n');
+        let effectiveCustomAgentId: number | undefined = detail.agentId ? Number(detail.agentId) : undefined;
+        if (!effectiveCustomAgentId && typeof sessionStorage !== 'undefined') {
+          try {
+            const rawWaiting = sessionStorage.getItem('webakus_ai_waiting_entity');
+            if (rawWaiting) {
+              const parsedWaiting = JSON.parse(rawWaiting);
+              if (parsedWaiting?.agentId) {
+                effectiveCustomAgentId = Number(parsedWaiting.agentId);
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
         setAttachedFiles([]);
-        sendMessageRef.current(messageToSend, undefined, ekDosyalar);
+        sendMessageRef.current(messageToSend, effectiveCustomAgentId, ekDosyalar);
         return;
       }
 
@@ -858,8 +879,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         configuredNodeMessage ||
         (isFileImportEntity
           ? t(
-            'kampanya_yazisi_import_yonergesi',
-            'Kampanya yazısını içeri aktarmak için aşağıdaki düğmeye basın.'
+            'belge_import_yonergesi',
+            'İlgili belgeyi içeri aktarmak için aşağıdaki düğmeye basın.'
           )
           : t(
             'form_ac_varsayilan_yonerge',
@@ -916,6 +937,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           varlikTuru: firstActionNode?.varlikTuru || firstActionNode?.VarlikTuru || '',
           modulKodu: firstActionNode?.modulKodu || firstActionNode?.ModulKodu || '',
           targetUrl: resolvedTargetRoute,
+          returnRoute: currentRoute,
+          agentId: currentAgent?.id,
           workflowId: item.id,
           workflowTitle: item.baslik,
           workflowPrompt: effectivePrompt,
