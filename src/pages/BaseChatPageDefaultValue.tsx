@@ -15,8 +15,6 @@ import React from 'react';
 import {
     Plus,
     Cpu,
-    PanelLeftClose,
-    PanelLeft,
     Sliders,
     Trash2,
     Download,
@@ -78,8 +76,8 @@ export const getBaseChatPageDefaultValues = (
     options: BaseChatPageDefaultValuesOptions = {}
 ): BaseChatPageDefaultValues => {
     const {
-        showHistorySidebar = true,
-        defaultHistoryOpen = true,
+        showHistorySidebar = false,
+        defaultHistoryOpen = false,
         externalSystemPrompt,
         externalSelectedAgentId,
         agents = [],
@@ -244,16 +242,9 @@ export const buildBaseChatActionMenuItems = ({
 
     const baseSecondaryItems: ActionMenuItem[] = [
         {
-            label: isSidebarOpen
-                ? t('auto_gecmisi_gizle', 'Sohbet Geçmişini Gizle')
-                : t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster'),
-            icon: isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />,
-            dividerAbove: true,
-            onClick: onToggleSidebar
-        },
-        {
             label: t('auto_sistem_yonergesi', 'Sistem Yönergesi (System Prompt)'),
             icon: <Sliders size={15} />,
+            dividerAbove: true,
             onClick: onToggleSystemPrompt
         },
         {
@@ -282,3 +273,4 @@ export const buildBaseChatActionMenuItems = ({
         ...baseSecondaryItems
     ];
 };
+

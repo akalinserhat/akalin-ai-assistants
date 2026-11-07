@@ -304,8 +304,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     placeholder,
     welcomeTitle,
     welcomeSubtitle,
-    showHistorySidebar = true,
-    defaultHistoryOpen = true,
+    showHistorySidebar = false,
+    defaultHistoryOpen = false,
     enableAttachments = true,
     enableCloudFiles = true,
     enableThinkingDetails = true,
@@ -1237,152 +1237,11 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             {...restBaseProps}
         >
             <div className="base-chat-layout">
-                {/* ─── 1. SOHBET GEÇMİŞİ KENAR ÇUBUĞU (SIDEBAR) ─────────────── */}
-                {showHistorySidebar && (
-                    <aside className={`base-chat-sidebar ${!isSidebarOpen ? 'collapsed' : ''}`}>
-                        <div className="base-chat-sidebar-header">
-                            <div className="base-chat-sidebar-top-row">
-                                <button
-                                    type="button"
-                                    onClick={handleCreateNewSession}
-                                    className="base-chat-new-btn"
-                                    title={t('auto_yeni_sohbet_aciklama', 'Yeni bir sohbet oturumu aç')}
-                                >
-                                    <Plus size={16} />
-                                    <span>{t('auto_yeni_sohbet', 'Yeni Sohbet')}</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsSidebarOpen(false)}
-                                    className="base-chat-sidebar-close-btn"
-                                    title={t('auto_gecmisi_gizle', 'Geçmişi Gizle')}
-                                >
-                                    <PanelLeftClose size={16} />
-                                </button>
-                            </div>
-
-                            <div className="base-chat-search-box">
-                                <Search size={14} className="text-secondary shrink-0" />
-                                <input
-                                    type="text"
-                                    placeholder={t('auto_sohbetlerde_ara', 'Sohbetlerde ara...')}
-                                    value={searchSessionQuery}
-                                    onChange={(e) => setSearchSessionQuery(e.target.value)}
-                                />
-                                {searchSessionQuery && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setSearchSessionQuery('')}
-                                        className="base-chat-search-clear-btn"
-                                    >
-                                        <X size={12} className="text-secondary" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Oturumlar Listesi */}
-                        <div className="base-chat-sessions-list">
-                            {sessionGroups.length === 0 ? (
-                                <div className="text-center p-16 text-12 text-secondary">
-                                    {t('auto_sohbet_bulunamadi', 'Kayıtlı sohbet bulunamadı.')}
-                                </div>
-                            ) : (
-                                sessionGroups.map(group => (
-                                    <div key={group.title} className="flex flex-col gap-4">
-                                        <div className="base-chat-session-group-title">
-                                            {group.title}
-                                        </div>
-                                        {group.items.map(s => {
-                                            const isActive = s.id?.toString() === activeSessionId?.toString();
-                                            const isEditing = editingSessionId?.toString() === s.id?.toString();
-
-                                            return (
-                                                <div
-                                                    key={s.id}
-                                                    onClick={() => !isEditing && handleSelectSession(s)}
-                                                    className={`base-chat-session-item ${isActive ? 'active' : ''}`}
-                                                >
-                                                    <div className="base-chat-session-content">
-                                                        <MessageSquare size={15} className="shrink-0" />
-                                                        {isEditing ? (
-                                                            <input
-                                                                type="text"
-                                                                value={editingSessionTitle}
-                                                                onChange={(e) => setEditingSessionTitle(e.target.value)}
-                                                                onBlur={() => handleSaveRename(s.id)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') handleSaveRename(s.id);
-                                                                    if (e.key === 'Escape') setEditingSessionId(null);
-                                                                }}
-                                                                autoFocus
-                                                                className="form-input text-12 py-2 px-6 rounded-6 w-full"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            />
-                                                        ) : (
-                                                            <span className="base-chat-session-title">
-                                                                {s.title}
-                                                            </span>
-                                                        )}
-                                                        {s.pinned && !isEditing && (
-                                                            <Pin size={11} className="base-chat-pin-indicator text-primary shrink-0" />
-                                                        )}
-                                                    </div>
-
-                                                    {!isEditing && (
-                                                        <div className="base-chat-session-actions">
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => handleTogglePinSession(s.id, e)}
-                                                                className={`base-chat-session-btn ${s.pinned ? 'active' : ''}`}
-                                                                title={s.pinned ? t('auto_sabitlemeyi_kaldir', 'Sabitlemeyi Kaldır') : t('auto_sabitle', 'Sabitle')}
-                                                            >
-                                                                <Pin size={12} className={s.pinned ? 'text-primary' : ''} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => handleStartRename(s, e)}
-                                                                className="base-chat-session-btn"
-                                                                title={t('auto_yeniden_adlandir', 'Yeniden Adlandır')}
-                                                            >
-                                                                <Edit2 size={12} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => handleDeleteSessionConfirm(s.id, e)}
-                                                                className="base-chat-session-btn delete"
-                                                                title={t('auto_sil', 'Sil')}
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </aside>
-                )}
-
-                {/* ─── 2. ANA SOHBET ALANI (MAIN CHAT AREA) ─────────────────── */}
+                {/* ─── ANA SOHBET ALANI (MAIN CHAT AREA) ─────────────────── */}
                 <main className="base-chat-main">
                     {/* Üst İkincil Araç Çubuğu (Toolbar) */}
                     <div className="base-chat-toolbar">
                         <div className="base-chat-toolbar-left">
-                            {showHistorySidebar && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsSidebarOpen(prev => !prev)}
-                                    className="base-chat-toolbar-toggle-btn"
-                                    title={isSidebarOpen ? t('auto_gecmisi_gizle', 'Sohbet Geçmişini Gizle') : t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster')}
-                                >
-                                    {isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />}
-                                </button>
-                            )}
-
                             <div className="base-chat-toolbar-session-info">
                                 <span className="base-chat-toolbar-session-title" title={activeSession?.title || t('auto_yeni_sohbet', 'Yeni Sohbet')}>
                                     {activeSession?.title || t('auto_yeni_sohbet', 'Yeni Sohbet')}
