@@ -3,22 +3,22 @@
  * @description
  * @akalin/ai-assistants - AI Model ve Parametre Yapılandırma Modal Bileşeni
  * BasePopup temel sınıfından türetilmiştir.
+ * ThinkPort AI Gateway üzerinden sunulan modellerin seçimi ve parametre ayarlarını yönetir.
  * 
  * Sorumlulukları:
- * - LLM Sağlayıcısı seçimi (LLMSeciciInput)
- * - Model seçimi veya girişi (YZModelSecici)
- * - Sıcaklık (Temperature / Creativity) parametre ayarı (Slider & Rozet)
+ * - ThinkPort merkezi sağlayıcı üzerinden model seçimi veya girişi (YZModelSecici)
+ * - Sıcaklık (Temperature / Creativity) parametre ayarı (BaseNumericInput & Rozet)
  * - Maksimum Token Sınırı (Max Tokens) parametre ayarı (TamsayiInput)
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Bot, Cpu, Zap, Thermometer } from 'lucide-react';
+import { Cpu, Zap, Thermometer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { 
   BasePopup, 
-  LLMSeciciInput, 
   YZModelSecici, 
+  BaseNumericInput,
   TamsayiInput,
   type LLMSaglayiciOption 
 } from '@akalin/ui';
@@ -60,29 +60,32 @@ export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
   const [sicaklik, setSicaklik] = useState<number>(0.7);
   const [maxTokens, setMaxTokens] = useState<number>(2048);
 
-  // Modal açıldığında veya initialData değiştiğinde formu doldur
+  // Modal açıldığında veya initialData değiştiğinde formu doldur (ThinkPort sağlayıcısına otomatik bağla)
   useEffect(() => {
     if (isOpen) {
+      const defaultProv = providers[0];
+      const defaultProvId = defaultProv?.id ? String(defaultProv.id) : '';
       if (initialData) {
-        setAiSaglayiciId(initialData.aiSaglayiciId ? String(initialData.aiSaglayiciId) : (providers[0]?.id ? String(providers[0].id) : ''));
+        setAiSaglayiciId(initialData.aiSaglayiciId ? String(initialData.aiSaglayiciId) : defaultProvId);
         setModelAdi(initialData.modelAdi || '');
         setSicaklik(initialData.sicaklik !== undefined ? initialData.sicaklik : 0.7);
         setMaxTokens(initialData.maxTokens !== undefined ? initialData.maxTokens : 2048);
       } else {
-        const defaultProvId = providers[0]?.id ? String(providers[0].id) : '';
         setAiSaglayiciId(defaultProvId);
-        const firstProv = providers.find(p => String(p.id) === defaultProvId);
-        setModelAdi(firstProv?.varsayilanModel || firstProv?.desteklenenModeller?.[0] || '');
+        setModelAdi(defaultProv?.varsayilanModel || defaultProv?.desteklenenModeller?.[0] || '');
         setSicaklik(0.7);
         setMaxTokens(2048);
       }
     }
   }, [isOpen, initialData, providers]);
 
-  // Seçili sağlayıcı nesnesi
+  // Seçili sağlayıcı nesnesi (Varsayılan olarak ThinkPort - providers[0])
   const selectedProvider = useMemo(() => {
-    if (!aiSaglayiciId) return null;
-    return providers.find(p => String(p.id) === String(aiSaglayiciId)) || null;
+    if (aiSaglayiciId) {
+      const found = providers.find(p => String(p.id) === String(aiSaglayiciId));
+      if (found) return found;
+    }
+    return providers[0] || null;
   }, [providers, aiSaglayiciId]);
 
   // Kullanılabilir modeller (başka satırlarda seçili olanları filtrele, mevcut düzenleneni hariç tutma)
@@ -103,21 +106,19 @@ export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
   }, [selectedProvider, excludedModelNames, initialData?.modelAdi]);
 
   const handleSave = () => {
-    if (!aiSaglayiciId) {
-      toast.error(t('lutfen_saglayici_secin', 'Lütfen bir LLM sağlayıcısı seçiniz.'));
-      return;
-    }
     if (!modelAdi.trim()) {
       toast.error(t('lutfen_model_secin', 'Lütfen bir model seçiniz veya yazınız.'));
       return;
     }
 
+    const resolvedProviderId = selectedProvider?.id || aiSaglayiciId || null;
+
     onSave({
       id: initialData?.id || `${modelAdi.trim()}-${Date.now()}`,
-      aiSaglayiciId: Number(aiSaglayiciId) || aiSaglayiciId,
-      saglayiciAdi: selectedProvider?.ad,
+      aiSaglayiciId: resolvedProviderId ? (Number(resolvedProviderId) || resolvedProviderId) : null,
+      saglayiciAdi: selectedProvider?.ad || 'ThinkPort API',
       modelAdi: modelAdi.trim(),
-      sicaklik: Number(sicaklik) || 0.7,
+      sicaklik: Math.min(1, Math.max(0, Number(sicaklik) || 0.7)),
       maxTokens: Number(maxTokens) || 2048,
       sira: initialData?.sira
     });
@@ -141,27 +142,6 @@ export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
       submitButtonText={isEdit ? t('guncelle', 'Güncelle') : t('ekle', 'Ekle')}
     >
       <div className="ai-model-selection-content">
-        {/* LLM Sağlayıcısı Seçimi */}
-        <div className="form-field">
-          <label className="form-label flex-row items-center gap-6 mb-6">
-            <Bot size={15} color="var(--accent-primary)" />
-            <span>{t('llm_saglayicisi', 'LLM Sağlayıcısı')} *</span>
-          </label>
-          <LLMSeciciInput
-            id="modalAiSaglayiciId"
-            value={aiSaglayiciId}
-            onChange={(provId, provObj) => {
-              const newId = provId ? String(provId) : '';
-              setAiSaglayiciId(newId);
-              const matchedProv = providers.find(p => String(p.id) === newId) || provObj;
-              const nextModel = matchedProv?.varsayilanModel || matchedProv?.desteklenenModeller?.[0] || '';
-              setModelAdi(nextModel);
-            }}
-            providers={providers}
-            placeholder={t('llm_saglayici_seciniz', 'LLM Sağlayıcısı Seçiniz...')}
-          />
-        </div>
-
         {/* Model Seçimi */}
         <div className="form-field">
           <label className="form-label flex-row items-center gap-6 mb-6">
@@ -174,13 +154,13 @@ export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
             onChange={(selectedModel: string) => setModelAdi(selectedModel)}
             singleSelect={true}
             saglayiciTuru={selectedProvider?.saglayiciTuru || 1}
-            baseUrl={selectedProvider?.baseUrl}
+            baseUrl={selectedProvider?.baseUrl || 'http://localhost:8000/v1'}
             apiKey={(selectedProvider as any)?.apiKey}
             providerId={selectedProvider?.id}
             options={availableModels}
             varsayilanModel={selectedProvider?.varsayilanModel}
             placeholder={t('model_seciniz', 'Model seçin veya arayın...')}
-            showLiveFetchButton={!!selectedProvider?.id || !!selectedProvider?.apiKeyTanimliMi || selectedProvider?.saglayiciTuru === 4}
+            showLiveFetchButton={true}
           />
         </div>
 
@@ -195,14 +175,16 @@ export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
               {sicaklik <= 0.2 ? t('deterministik', 'Deterministik (Kesin)') : sicaklik <= 0.7 ? t('dengeli', 'Dengeli') : t('yaratici', 'Yaratıcı')}
             </span>
           </div>
-          <input 
-            type="range" 
-            min="0" 
-            max="1" 
-            step="0.05"
+          <BaseNumericInput
             value={sicaklik}
-            onChange={e => setSicaklik(parseFloat(e.target.value))}
-            className="ai-param-slider"
+            decimalScale={2}
+            allowNegative={false}
+            onChange={e => {
+              const raw = Number(e?.target?.value ?? 0.7);
+              const clamped = Math.min(1, Math.max(0, isNaN(raw) ? 0.7 : raw));
+              setSicaklik(clamped);
+            }}
+            placeholder="0,70"
           />
           <div className="ai-param-scale">
             <span>0.0 ({t('kesin_ve_odakli', 'Kesin & Odaklı')})</span>
