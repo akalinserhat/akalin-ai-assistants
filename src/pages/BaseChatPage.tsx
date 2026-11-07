@@ -1665,6 +1665,27 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                 const isUser = msg.role === 'user';
                                 const isError = msg.role === 'error' || msg.isError;
 
+                                const rawMsgContent = msg.content || '';
+                                const userExtractedDetails: Array<{ title: string; body: string }> = [];
+                                let bubbleContent = rawMsgContent;
+
+                                if (isUser && rawMsgContent.includes(':::details')) {
+                                    const parts = rawMsgContent.split(/(:::details\s+[^\n]+\n[\s\S]*?:::)/g);
+                                    const remaining: string[] = [];
+                                    parts.forEach((seg) => {
+                                        const m = seg.match(/^:::details\s+([^\n]+)\n([\s\S]*?):::$/);
+                                        if (m) {
+                                            userExtractedDetails.push({
+                                                title: m[1].trim(),
+                                                body: m[2].trim(),
+                                            });
+                                        } else if (seg && seg.trim()) {
+                                            remaining.push(seg.trim());
+                                        }
+                                    });
+                                    bubbleContent = remaining.join('\n\n').trim();
+                                }
+
                                 return (
                                     <div
                                         key={msg.id || index}
@@ -1709,7 +1730,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                 })()}
                                             </div>
 
-                                            {/* Düşünce ve Çıkarım Detayı ([Açıklama] >) */}
+                                            {/* Düşünce ve Çıkarım Detayı (Açıklama >) */}
                                             {enableThinkingDetails && msg.thinkingContent && (
                                                 <CollapsibleExtraInfo
                                                     content={msg.thinkingContent}
@@ -1719,9 +1740,20 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                 />
                                             )}
 
+                                            {userExtractedDetails.map((det, detIdx) => (
+                                                <CollapsibleExtraInfo
+                                                    key={`u-det-${msg.id || index}-${detIdx}`}
+                                                    title={det.title}
+                                                    content={det.body}
+                                                    baseKey={`u-det-${msg.id || index}-${detIdx}`}
+                                                    className="ai-thinking-details-card"
+                                                />
+                                            ))}
+
                                             {/* Baloncuk İçeriği */}
+                                            {(bubbleContent || !isUser || (msg.attachments && msg.attachments.length > 0) || (msg as any).eylemVerisiJson || msg.eylemPayload) && (
                                             <div className={`ai-chat-bubble ${isUser ? 'user' : 'assistant'} ${isError ? 'error' : ''}`}>
-                                                <FormattedMessageContent content={msg.content} />
+                                                <FormattedMessageContent content={bubbleContent} />
 
                                                 {/* Mesaja Eklenmiş Dosyalar */}
                                                 {msg.attachments && msg.attachments.length > 0 && (
@@ -1771,6 +1803,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     </div>
                                                 )}
                                             </div>
+                                            )}
 
                                             {/* Mesaj Altı Aksiyonlar */}
                                             <div className="ai-chat-message-actions base-chat-msg-actions">
