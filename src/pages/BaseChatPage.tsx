@@ -93,7 +93,9 @@ import {
     AiTypingIndicator,
     AiResponseTimer,
     AiThinkingDetails,
-    updateDocumentTitle
+    updateDocumentTitle,
+    useHeaderApi,
+    type BreadcrumbSubItem
 } from '@akalin/ui';
 import '../styles/AiChatPanel.css';
 import '../styles/BaseChatPage.css';
@@ -198,7 +200,9 @@ export interface BaseChatPageProps extends Omit<BasePageProps, 'onTitleEdit'> {
     enableThinkingDetails?: boolean;
     enableResponseTimer?: boolean;
 
-    // Ekstra Aksiyonlar
+    // Ekstra Aksiyonlar & Breadcrumb Senkronizasyonu
+    recordTitle?: string;
+    subTrail?: BreadcrumbSubItem[];
     headerActions?: ReactNode;
     extraDropdownActions?: ActionMenuItem[];
 
@@ -264,6 +268,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     id = 'base-ai-chat-page',
     title,
     pageTitle,
+    recordTitle,
+    subTrail,
     subtitle,
     subtitleLeft,
     subtitleRight,
@@ -375,6 +381,40 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     const activeSession = useMemo(() => {
         return sessions.find(s => s.id?.toString() === activeSessionId?.toString()) || sessions[0] || null;
     }, [sessions, activeSessionId]);
+
+    // ─── Breadcrumb & Sayfa Başlığı Senkronizasyonu (BaseCardPage Standardı) ──
+    const { setHeaderBreadcrumbOptions } = useHeaderApi() || {};
+
+    const effectiveRecordTitle = useMemo(() => {
+        if (recordTitle && typeof recordTitle === 'string' && recordTitle.trim()) {
+            return recordTitle.trim();
+        }
+        if (activeSession?.title && typeof activeSession.title === 'string' && activeSession.title.trim()) {
+            return activeSession.title.trim();
+        }
+        if (typeof title === 'string' && title.trim()) {
+            return title.trim();
+        }
+        if (typeof pageTitle === 'string' && pageTitle.trim()) {
+            return pageTitle.trim();
+        }
+        return undefined;
+    }, [recordTitle, activeSession?.title, title, pageTitle]);
+
+    useEffect(() => {
+        if (setHeaderBreadcrumbOptions) {
+            if (subTrail && subTrail.length > 0) {
+                setHeaderBreadcrumbOptions({ subTrail });
+            } else if (effectiveRecordTitle) {
+                setHeaderBreadcrumbOptions({ recordTitle: effectiveRecordTitle });
+            }
+        }
+        return () => {
+            if (setHeaderBreadcrumbOptions && (subTrail || effectiveRecordTitle)) {
+                setHeaderBreadcrumbOptions(null);
+            }
+        };
+    }, [subTrail, effectiveRecordTitle, setHeaderBreadcrumbOptions]);
 
     // ─── Ajanlar (Agents) Listesi ve Seçimi ───────────────────────────────────
     const [agentsList, setAgentsList] = useState<ChatAgent[]>(externalAgents || []);
