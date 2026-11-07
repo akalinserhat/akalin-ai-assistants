@@ -1096,18 +1096,56 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     }, [filteredSessions, t]);
 
     // ─── ActionMenu Eylemleri ─────────────────────────────────────────────────
+    const hasChildExplicitDefault = Boolean(
+        extraDropdownActions?.some(a => !a.hidden && (a.isDefault || a.default))
+    );
+
     const standardActionMenuItems: ActionMenuItem[] = useMemo(() => {
-        const items: ActionMenuItem[] = [
-            {
-                key: 'new-chat',
-                label: t('auto_yeni_sohbet_baslat', 'Yeni Sohbet Başlat'),
-                icon: <Plus size={15} />,
-                onClick: handleCreateNewSession
-            },
+        const newChatItem: ActionMenuItem = {
+            key: 'new-chat',
+            label: t('auto_yeni_sohbet_baslat', 'Yeni Sohbet Başlat'),
+            icon: <Plus size={15} />,
+            isDefault: !hasChildExplicitDefault,
+            variant: !hasChildExplicitDefault ? 'primary' : 'default',
+            onClick: handleCreateNewSession
+        };
+
+        const modelPreferenceItem: ActionMenuItem | null = agentsList.length > 0 ? {
+            key: 'model-preference',
+            dividerAbove: true,
+            custom: (
+                <div className="base-chat-action-menu-model">
+                    <span className="base-chat-action-menu-model-label">
+                        <Cpu size={13} />
+                        <span>{t('auto_model_tercihi', 'Model Tercihi')}</span>
+                    </span>
+                    <select
+                        className="base-chat-agent-select base-chat-action-menu-select"
+                        value={selectedAgentId || ''}
+                        onChange={(e) => {
+                            const nextId = e.target.value;
+                            setSelectedAgentId(nextId);
+                            const found = agentsList.find(a => a.id?.toString() === nextId);
+                            if (found && onAgentChange) onAgentChange(found);
+                        }}
+                        title={t('auto_model_tercihi', 'Model Tercihi')}
+                    >
+                        {agentsList.map(a => (
+                            <option key={a.id} value={a.id}>
+                                🤖 {a.ad || a.modelAdi || 'Ajan'}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )
+        } : null;
+
+        const baseSecondaryItems: ActionMenuItem[] = [
             {
                 key: 'toggle-sidebar',
                 label: isSidebarOpen ? t('auto_gecmisi_gizle', 'Sohbet Geçmişini Gizle') : t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster'),
                 icon: isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />,
+                dividerAbove: true,
                 onClick: () => setIsSidebarOpen(prev => !prev)
             },
             {
@@ -1139,13 +1177,21 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             }
         ];
 
-        if (extraDropdownActions && extraDropdownActions.length > 0) {
-            items.push(...extraDropdownActions);
-        }
+        const items: ActionMenuItem[] = [
+            newChatItem,
+            ...(modelPreferenceItem ? [modelPreferenceItem] : []),
+            ...(extraDropdownActions || []),
+            ...baseSecondaryItems
+        ];
 
         return items;
     }, [
         t,
+        hasChildExplicitDefault,
+        agentsList,
+        selectedAgentId,
+        setSelectedAgentId,
+        onAgentChange,
         isSidebarOpen,
         currentMessages.length,
         handleCreateNewSession,
@@ -1163,39 +1209,17 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         <ActionMenu
             actions={standardActionMenuItems}
             triggerVariant="primary"
-            showDefaultActionAsButton={false}
+            showDefaultActionAsButton={true}
         />
     ) : null;
 
     // ─── Header Aksiyonları ve HeaderProps Birleştirme ──────────────────────
-    const hasHeaderContent = Boolean(headerExtra || headerActions || agentsList.length > 1 || chatActionMenu);
+    const hasHeaderContent = Boolean(headerExtra || headerActions || chatActionMenu);
 
     const finalHeaderExtra = hasHeaderContent ? (
         <div className="flex items-center gap-8">
             {headerExtra}
             {headerActions}
-
-            {/* Hızlı Ajan Seçici Dropdown */}
-            {agentsList.length > 1 && (
-                <select
-                    className="base-chat-agent-select"
-                    value={selectedAgentId || ''}
-                    onChange={(e) => {
-                        const nextId = e.target.value;
-                        setSelectedAgentId(nextId);
-                        const found = agentsList.find(a => a.id?.toString() === nextId);
-                        if (found && onAgentChange) onAgentChange(found);
-                    }}
-                    title={t('auto_ajan_sec', 'Görevli Ajan Seç')}
-                >
-                    {agentsList.map(a => (
-                        <option key={a.id} value={a.id}>
-                            🤖 {a.ad || a.modelAdi || 'Ajan'}
-                        </option>
-                    ))}
-                </select>
-            )}
-
             {chatActionMenu}
         </div>
     ) : null;

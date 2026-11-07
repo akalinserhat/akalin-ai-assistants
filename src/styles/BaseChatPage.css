@@ -69,6 +69,36 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
+/* ActionMenu İçi Varsayılan Model / Ajan Tercihi Seçici */
+.base-chat-action-menu-model {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px;
+  width: 100%;
+  min-width: 220px;
+  box-sizing: border-box;
+}
+
+.base-chat-action-menu-model-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.base-chat-action-menu-select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+}
+
 /* Ana Çerçeve (Sidebar + Chat Area) */
 .base-chat-layout {
   display: flex;
