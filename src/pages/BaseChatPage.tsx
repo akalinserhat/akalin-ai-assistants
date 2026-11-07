@@ -254,7 +254,10 @@ const defaultSuggestionsList: PromptSuggestion[] = [
     }
 ];
 
-import { AiMarkdownContent as FormattedMessageContent } from '../components/AiMarkdownContent';
+import {
+    AiMarkdownContent as FormattedMessageContent,
+    CollapsibleExtraInfo
+} from '../components/AiMarkdownContent';
 import { AiActionCard } from '../components/AiActionCard';
 import {
     getBaseChatPageDefaultValues,
@@ -1706,11 +1709,13 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                 })()}
                                             </div>
 
-                                            {/* Düşünce ve Çıkarım Detayı (AiThinkingDetails) */}
+                                            {/* Düşünce ve Çıkarım Detayı ([Açıklama] >) */}
                                             {enableThinkingDetails && msg.thinkingContent && (
-                                                <AiThinkingDetails
+                                                <CollapsibleExtraInfo
                                                     content={msg.thinkingContent}
                                                     title={t('auto_dusunme_sureci', 'Yapay Zeka Düşünce & Analiz Süreci')}
+                                                    isRawPre={true}
+                                                    className="ai-thinking-details-card"
                                                 />
                                             )}
 

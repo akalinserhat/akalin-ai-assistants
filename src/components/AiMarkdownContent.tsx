@@ -316,6 +316,56 @@ export const renderMarkdownBlocks = (text: string, baseKey: string | number = 0)
   return <>{elements}</>;
 };
 
+// ─── AÇILIR / KAPANIR EKSTRA BİLGİ ALANI ([Açıklama] >) ───────────────────────
+
+export const CollapsibleExtraInfo: React.FC<{
+  title: string;
+  content: string;
+  baseKey?: string | number;
+  defaultExpanded?: boolean;
+  isRawPre?: boolean;
+  className?: string;
+}> = ({
+  title,
+  content,
+  baseKey = 'extra',
+  defaultExpanded = false,
+  isRawPre = false,
+  className = '',
+}) => {
+  const [isOpen, setIsOpen] = useState<boolean>(defaultExpanded);
+  const cleanTitle = (title || '')
+    .replace(/^\[/, '')
+    .replace(/\]$/, '')
+    .trim();
+
+  if (!content || !content.trim()) return null;
+
+  return (
+    <div className={`ai-chat-collapsible-section ${isOpen ? 'open' : ''} ${className}`.trim()}>
+      <button
+        type="button"
+        className="ai-chat-collapsible-trigger"
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
+        <span className="ai-chat-collapsible-label">[{cleanTitle}]</span>
+        <span className={`ai-chat-collapsible-chevron ${isOpen ? 'open' : ''}`}>{'>'}</span>
+      </button>
+      {isOpen && (
+        <div className="ai-chat-collapsible-body">
+          {isRawPre ? (
+            <pre className="ai-thinking-code-block">
+              <code>{content}</code>
+            </pre>
+          ) : (
+            <AiMarkdownContent content={content} baseKey={`${baseKey}-body`} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── ANA BİLEŞEN: AiMarkdownContent ──────────────────────────────────────────
 
 export const AiMarkdownContent: React.FC<AiMarkdownContentProps> = ({ 
@@ -325,24 +375,58 @@ export const AiMarkdownContent: React.FC<AiMarkdownContentProps> = ({
 }) => {
   if (!content) return null;
 
-  // Fenced code blocks ```lang ... ``` ayır
-  const parts = content.split(/(```[\s\S]*?```)/g);
+  // 1. Önce :::details [Başlık]\n...\n::: açılır/kapanır ekstra bilgi bloklarını ayır
+  const detailsBlocks = content.split(/(:::details\s+[^\n]+\n[\s\S]*?:::)/g);
 
   return (
     <div className={`ai-chat-formatted-text ${className}`}>
-      {parts.map((part, index) => {
-        if (part.startsWith('```') && part.endsWith('```')) {
-          const match = part.match(/^```(\w+)?\n?([\s\S]*?)```$/);
-          const lang = match ? match[1] || '' : '';
-          const code = match ? match[2].trim() : part.slice(3, -3).trim();
-          return <CodeBlockView key={`${baseKey}-code-${index}`} language={lang} code={code} />;
+      {detailsBlocks.map((segment, segIdx) => {
+        if (!segment) return null;
+
+        const detailsMatch = segment.match(/^:::details\s+([^\n]+)\n([\s\S]*?):::$/);
+        if (detailsMatch) {
+          const rawTitle = detailsMatch[1].trim();
+          const innerBody = detailsMatch[2].trim();
+          return (
+            <CollapsibleExtraInfo
+              key={`${baseKey}-details-${segIdx}`}
+              title={rawTitle}
+              content={innerBody}
+              baseKey={`${baseKey}-d-${segIdx}`}
+            />
+          );
         }
 
-        // Normal metin blokları (Markdown tablo, başlık, liste, kalın, italik, satır içi kod)
+        // 2. Normal metin içindeki Fenced code blocks ```lang ... ``` ayır
+        const parts = segment.split(/(```[\s\S]*?```)/g);
         return (
-          <div key={`${baseKey}-block-${index}`} className="ai-chat-markdown-block">
-            {renderMarkdownBlocks(part, `${baseKey}-${index}`)}
-          </div>
+          <React.Fragment key={`${baseKey}-seg-${segIdx}`}>
+            {parts.map((part, index) => {
+              if (!part) return null;
+              if (part.startsWith('```') && part.endsWith('```')) {
+                const match = part.match(/^```(\w+)?\n?([\s\S]*?)```$/);
+                const lang = match ? match[1] || '' : '';
+                const code = match ? match[2].trim() : part.slice(3, -3).trim();
+                return (
+                  <CodeBlockView
+                    key={`${baseKey}-code-${segIdx}-${index}`}
+                    language={lang}
+                    code={code}
+                  />
+                );
+              }
+
+              // Normal metin blokları (Markdown tablo, başlık, liste, kalın, italik, satır içi kod)
+              return (
+                <div
+                  key={`${baseKey}-block-${segIdx}-${index}`}
+                  className="ai-chat-markdown-block"
+                >
+                  {renderMarkdownBlocks(part, `${baseKey}-${segIdx}-${index}`)}
+                </div>
+              );
+            })}
+          </React.Fragment>
         );
       })}
     </div>

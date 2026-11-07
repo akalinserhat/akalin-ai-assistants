@@ -1474,6 +1474,111 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
+   AÇILIR / KAPANIR EKSTRA BİLGİ ALANI ([Açıklama] >)
+   ───────────────────────────────────────────────────────────── */
+.ai-chat-collapsible-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0;
+  width: 100%;
+}
+
+.ai-chat-message-row.user .ai-thinking-details-card {
+  align-items: flex-end;
+}
+
+.ai-chat-message-row.assistant .ai-thinking-details-card {
+  align-items: flex-start;
+}
+
+.ai-chat-collapsible-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  width: fit-content;
+  max-width: 100%;
+  text-align: left;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ai-chat-collapsible-trigger:hover {
+  color: var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.ai-chat-collapsible-section.open > .ai-chat-collapsible-trigger {
+  color: var(--accent-primary, #6366f1);
+}
+
+.ai-chat-bubble.user .ai-chat-collapsible-trigger {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.ai-chat-bubble.user .ai-chat-collapsible-trigger:hover,
+.ai-chat-bubble.user .ai-chat-collapsible-section.open > .ai-chat-collapsible-trigger {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ai-chat-collapsible-label {
+  word-break: break-word;
+}
+
+.ai-chat-collapsible-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.ai-chat-collapsible-chevron.open {
+  transform: rotate(90deg);
+}
+
+.ai-chat-collapsible-body {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-secondary, rgba(148, 163, 184, 0.08));
+  border-left: 3px solid var(--accent-primary, #6366f1);
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+.ai-chat-bubble.user .ai-chat-collapsible-body {
+  background: rgba(0, 0, 0, 0.18);
+  border-left-color: rgba(255, 255, 255, 0.65);
+}
+
+.ai-thinking-code-block {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────
    DUYARLI TASARIM (RESPONSIVE ADAPTATION)
    ───────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
