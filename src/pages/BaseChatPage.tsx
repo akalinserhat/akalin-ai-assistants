@@ -252,6 +252,11 @@ const defaultSuggestionsList: PromptSuggestion[] = [
 
 import { AiMarkdownContent as FormattedMessageContent } from '../components/AiMarkdownContent';
 import { AiActionCard } from '../components/AiActionCard';
+import {
+    getBaseChatPageDefaultValues,
+    createDefaultInitialChatSession,
+    buildBaseChatActionMenuItems
+} from './BaseChatPageDefaultValue';
 
 // ─── ANA BİLEŞEN: BaseChatPage ───────────────────────────────────────────────
 
@@ -321,6 +326,20 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         updateDocumentTitle(pageTitle || effectiveTitle);
     }, [pageTitle, effectiveTitle]);
 
+    // ─── Başlangıç Varsayılan Değerleri (BaseChatPageDefaultValue.tsx) ───────
+    const initialDefaults = useMemo(
+        () =>
+            getBaseChatPageDefaultValues({
+                showHistorySidebar,
+                defaultHistoryOpen,
+                externalSystemPrompt,
+                externalSelectedAgentId,
+                agents: externalAgents,
+                messages: externalMessages
+            }),
+        [] // eslint-disable-line react-hooks/exhaustive-deps
+    );
+
     // ─── Oturumlar (Sessions) Durumu ─────────────────────────────────────────
     const [localSessions, setLocalSessions] = useState<ChatSession[]>(() => {
         if (externalSessions && externalSessions.length > 0) return externalSessions;
@@ -336,14 +355,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             }
         }
         // Başlangıç ilk boş oturumu
-        const initialSession: ChatSession = {
-            id: generateId(),
-            title: t('auto_yeni_sohbet', 'Yeni Sohbet'),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            messages: []
-        };
-        return [initialSession];
+        return [createDefaultInitialChatSession(generateId(), t('auto_yeni_sohbet', 'Yeni Sohbet'))];
     });
 
     const sessions = externalSessions || localSessions;
@@ -366,10 +378,9 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
 
     // ─── Ajanlar (Agents) Listesi ve Seçimi ───────────────────────────────────
     const [agentsList, setAgentsList] = useState<ChatAgent[]>(externalAgents || []);
-    const [selectedAgentId, setSelectedAgentId] = useState<string | number | null>(() => {
-        if (externalSelectedAgentId !== undefined) return externalSelectedAgentId;
-        return agentsList[0]?.id || null;
-    });
+    const [selectedAgentId, setSelectedAgentId] = useState<string | number | null>(
+        initialDefaults.selectedAgentId
+    );
 
     // Kontrollü mod: Dışarıdan selectedAgentId değiştiğinde içerideki state'i senkronize et
     useEffect(() => {
@@ -404,8 +415,8 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     }, [agentsList, selectedAgentId]);
 
     // ─── Sistem Yönergesi (System Prompt) ───────────────────────────────────
-    const [localSystemPrompt, setLocalSystemPrompt] = useState<string>(externalSystemPrompt || '');
-    const [isSystemPromptOpen, setIsSystemPromptOpen] = useState(false);
+    const [localSystemPrompt, setLocalSystemPrompt] = useState<string>(initialDefaults.systemPrompt);
+    const [isSystemPromptOpen, setIsSystemPromptOpen] = useState<boolean>(initialDefaults.isSystemPromptOpen);
 
     useEffect(() => {
         if (externalSystemPrompt !== undefined) {
@@ -1095,111 +1106,47 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         return groups;
     }, [filteredSessions, t]);
 
-    // ─── ActionMenu Eylemleri ─────────────────────────────────────────────────
-    const hasChildExplicitDefault = Boolean(
-        extraDropdownActions?.some(a => !a.hidden && (a.isDefault || a.default))
+    // ─── ActionMenu Eylemleri (BaseChatPageDefaultValue.tsx) ─────────────────
+    const handleSelectAgentFromMenu = useCallback(
+        (nextId: string) => {
+            setSelectedAgentId(nextId);
+            const found = agentsList.find(a => a.id?.toString() === nextId);
+            if (found && onAgentChange) onAgentChange(found);
+        },
+        [agentsList, onAgentChange]
     );
 
-    const standardActionMenuItems: ActionMenuItem[] = useMemo(() => {
-        const newChatItem: ActionMenuItem = {
-            key: 'new-chat',
-            label: t('auto_yeni_sohbet_baslat', 'Yeni Sohbet Başlat'),
-            icon: <Plus size={15} />,
-            isDefault: !hasChildExplicitDefault,
-            variant: !hasChildExplicitDefault ? 'primary' : 'default',
-            onClick: handleCreateNewSession
-        };
-
-        const modelPreferenceItem: ActionMenuItem | null = agentsList.length > 0 ? {
-            key: 'model-preference',
-            dividerAbove: true,
-            custom: (
-                <div className="base-chat-action-menu-model">
-                    <span className="base-chat-action-menu-model-label">
-                        <Cpu size={13} />
-                        <span>{t('auto_model_tercihi', 'Model Tercihi')}</span>
-                    </span>
-                    <select
-                        className="base-chat-agent-select base-chat-action-menu-select"
-                        value={selectedAgentId || ''}
-                        onChange={(e) => {
-                            const nextId = e.target.value;
-                            setSelectedAgentId(nextId);
-                            const found = agentsList.find(a => a.id?.toString() === nextId);
-                            if (found && onAgentChange) onAgentChange(found);
-                        }}
-                        title={t('auto_model_tercihi', 'Model Tercihi')}
-                    >
-                        {agentsList.map(a => (
-                            <option key={a.id} value={a.id}>
-                                🤖 {a.ad || a.modelAdi || 'Ajan'}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            )
-        } : null;
-
-        const baseSecondaryItems: ActionMenuItem[] = [
-            {
-                key: 'toggle-sidebar',
-                label: isSidebarOpen ? t('auto_gecmisi_gizle', 'Sohbet Geçmişini Gizle') : t('auto_gecmisi_goster', 'Sohbet Geçmişini Göster'),
-                icon: isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />,
-                dividerAbove: true,
-                onClick: () => setIsSidebarOpen(prev => !prev)
-            },
-            {
-                key: 'system-prompt',
-                label: t('auto_sistem_yonergesi', 'Sistem Yönergesi (System Prompt)'),
-                icon: <Sliders size={15} />,
-                onClick: () => setIsSystemPromptOpen(prev => !prev)
-            },
-            {
-                key: 'clear-chat',
-                label: t('auto_sohbeti_temizle', 'Sohbeti Temizle'),
-                icon: <Trash2 size={15} className="text-danger" />,
-                onClick: handleClearCurrentMessages,
-                disabled: currentMessages.length === 0
-            },
-            {
-                key: 'export-md',
-                label: t('auto_disa_aktar_md', 'Markdown Olarak İndir (.md)'),
-                icon: <Download size={15} />,
-                onClick: handleExportMarkdown,
-                disabled: currentMessages.length === 0
-            },
-            {
-                key: 'export-json',
-                label: t('auto_disa_aktar_json', 'JSON Olarak İndir (.json)'),
-                icon: <Code2 size={15} />,
-                onClick: handleExportJson,
-                disabled: currentMessages.length === 0
-            }
-        ];
-
-        const items: ActionMenuItem[] = [
-            newChatItem,
-            ...(modelPreferenceItem ? [modelPreferenceItem] : []),
-            ...(extraDropdownActions || []),
-            ...baseSecondaryItems
-        ];
-
-        return items;
-    }, [
-        t,
-        hasChildExplicitDefault,
-        agentsList,
-        selectedAgentId,
-        setSelectedAgentId,
-        onAgentChange,
-        isSidebarOpen,
-        currentMessages.length,
-        handleCreateNewSession,
-        handleClearCurrentMessages,
-        handleExportMarkdown,
-        handleExportJson,
-        extraDropdownActions
-    ]);
+    const standardActionMenuItems: ActionMenuItem[] = useMemo(
+        () =>
+            buildBaseChatActionMenuItems({
+                t,
+                messages: currentMessages,
+                agentsList,
+                selectedAgentId,
+                onSelectAgent: handleSelectAgentFromMenu,
+                isSidebarOpen,
+                onToggleSidebar: () => setIsSidebarOpen(prev => !prev),
+                onToggleSystemPrompt: () => setIsSystemPromptOpen(prev => !prev),
+                onCreateNewSession: handleCreateNewSession,
+                onClearCurrentMessages: handleClearCurrentMessages,
+                onExportMarkdown: handleExportMarkdown,
+                onExportJson: handleExportJson,
+                extraDropdownActions
+            }),
+        [
+            t,
+            currentMessages,
+            agentsList,
+            selectedAgentId,
+            handleSelectAgentFromMenu,
+            isSidebarOpen,
+            handleCreateNewSession,
+            handleClearCurrentMessages,
+            handleExportMarkdown,
+            handleExportJson,
+            extraDropdownActions
+        ]
+    );
 
     const visibleActionMenuItems = useMemo(() => {
         return standardActionMenuItems.filter(a => a && !a.hidden);

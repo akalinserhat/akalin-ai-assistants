@@ -56,6 +56,18 @@ export {
 } from './pages/BaseChatPage';
 
 export {
+  getBaseChatPageDefaultValues,
+  isBaseChatConversationStarted,
+  resolveBaseChatActionMenuDefaultMode,
+  createDefaultInitialChatSession,
+  buildBaseChatActionMenuItems,
+  type BaseChatActionMenuDefaultMode,
+  type BaseChatPageDefaultValues,
+  type BaseChatPageDefaultValuesOptions,
+  type BuildBaseChatActionMenuItemsParams
+} from './pages/BaseChatPageDefaultValue';
+
+export {
   AiModelSelection,
   default as DefaultAiModelSelection,
   type AiModelSelectionProps,
