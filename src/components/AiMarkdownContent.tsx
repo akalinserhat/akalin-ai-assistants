@@ -316,7 +316,7 @@ export const renderMarkdownBlocks = (text: string, baseKey: string | number = 0)
   return <>{elements}</>;
 };
 
-// ─── AÇILIR / KAPANIR EKSTRA BİLGİ ALANI ([Açıklama] >) ───────────────────────
+// ─── AÇILIR / KAPANIR EKSTRA BİLGİ ALANI (Açıklama >) ─────────────────────────
 
 export const CollapsibleExtraInfo: React.FC<{
   title: string;
@@ -335,8 +335,8 @@ export const CollapsibleExtraInfo: React.FC<{
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(defaultExpanded);
   const cleanTitle = (title || '')
-    .replace(/^\[/, '')
-    .replace(/\]$/, '')
+    .replace(/^\[+/, '')
+    .replace(/\]+$/, '')
     .trim();
 
   if (!content || !content.trim()) return null;
@@ -348,7 +348,7 @@ export const CollapsibleExtraInfo: React.FC<{
         className="ai-chat-collapsible-trigger"
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <span className="ai-chat-collapsible-label">[{cleanTitle}]</span>
+        <span className="ai-chat-collapsible-label">{cleanTitle}</span>
         <span className={`ai-chat-collapsible-chevron ${isOpen ? 'open' : ''}`}>{'>'}</span>
       </button>
       {isOpen && (
