@@ -1408,7 +1408,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         <FilesOnCloudsComponent
           isOpen={isCloudPickerOpen}
           isModal={true}
-          showFolderTree={true}
+          showFolderTree={false}
           documentType={docContext.documentType}
           documentId={docContext.documentId}
           onClose={() => {
