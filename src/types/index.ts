@@ -283,6 +283,7 @@ export interface ChatMessage {
   latencyMs?: number;
   durationMs?: number;
   ttftMs?: number;
+  rawPayload?: any;
   customData?: Record<string, any>;
 }
 

@@ -482,6 +482,15 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
 
     // ─── Mesaj Akışı ve Gönderme Durumu ──────────────────────────────────────
     const currentMessages: ChatMessage[] = externalMessages || activeSession?.messages || [];
+    const [expandedRawJsonMsgIds, setExpandedRawJsonMsgIds] = useState<Record<string | number, boolean>>({});
+
+    const handleToggleRawJson = useCallback((msgId: string | number) => {
+        setExpandedRawJsonMsgIds((prev) => ({
+            ...prev,
+            [msgId]: !prev[msgId],
+        }));
+    }, []);
+
     const [inputText, setInputText] = useState('');
     const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
     const [pendingHizliIstek, setPendingHizliIstek] = useState<AgentHizliIstek | null>(null);
@@ -1665,6 +1674,36 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                 const isUser = msg.role === 'user';
                                 const isError = msg.role === 'error' || msg.isError;
 
+                                const rawJsonCandidate =
+                                    msg.rawPayload ??
+                                    msg.customData?.rawPayload ??
+                                    msg.customData?.rawRecord?.raw_payload_json ??
+                                    msg.customData?.rawRecord ??
+                                    null;
+
+                                let rawJsonString = '';
+                                if (rawJsonCandidate) {
+                                    if (typeof rawJsonCandidate === 'string') {
+                                        const trimmed = rawJsonCandidate.trim();
+                                        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                                            try {
+                                                const parsed = JSON.parse(trimmed);
+                                                rawJsonString = JSON.stringify(parsed, null, 2);
+                                            } catch {
+                                                rawJsonString = trimmed;
+                                            }
+                                        } else {
+                                            rawJsonString = trimmed;
+                                        }
+                                    } else {
+                                        try {
+                                            rawJsonString = JSON.stringify(rawJsonCandidate, null, 2);
+                                        } catch {
+                                            rawJsonString = String(rawJsonCandidate);
+                                        }
+                                    }
+                                }
+
                                 const rawMsgContent = msg.content || '';
                                 const userExtractedDetails: Array<{ title: string; body: string }> = [];
                                 let bubbleContent = rawMsgContent;
@@ -1819,6 +1858,21 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     <Copy size={13} />
                                                 </button>
 
+                                                {rawJsonString && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleToggleRawJson(msg.id || index)}
+                                                        className={`ai-chat-action-btn ${expandedRawJsonMsgIds[msg.id || index] ? 'active text-primary' : ''}`}
+                                                        title={
+                                                            expandedRawJsonMsgIds[msg.id || index]
+                                                                ? t('auto_saf_mesaji_gizle', 'Saf JSON Mesajını Gizle')
+                                                                : t('auto_saf_mesaji_goster', 'Saf JSON Mesajını İncele (Raw Payload)')
+                                                        }
+                                                    >
+                                                        <Code2 size={13} />
+                                                    </button>
+                                                )}
+
                                                 {!isUser && !isError && (
                                                     <>
                                                         <button
@@ -1849,6 +1903,37 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     </>
                                                 )}
                                             </div>
+
+                                            {/* Tam El Değmemiş (Saf) JSON İnceleme Alanı */}
+                                            {expandedRawJsonMsgIds[msg.id || index] && rawJsonString && (
+                                                <div className="ai-chat-raw-json-panel">
+                                                    <div className="ai-chat-raw-json-header">
+                                                        <div className="flex items-center gap-6">
+                                                            <Code2 size={13} className="text-secondary" />
+                                                            <span className="text-11 font-semibold text-secondary">
+                                                                {isUser
+                                                                    ? t('auto_giden_saf_json', 'Giden Saf JSON (İstek & İstem)')
+                                                                    : t('auto_gelen_saf_json', 'Gelen Saf JSON (Model Yanıtı & Telemetri)')}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(rawJsonString);
+                                                                toast.success(t('auto_json_kopyalandi', 'Saf JSON kopyalandı'));
+                                                            }}
+                                                            className="ai-chat-raw-json-copy-btn"
+                                                            title={t('auto_json_kopyala', 'JSON Kopyala')}
+                                                        >
+                                                            <Copy size={12} />
+                                                            <span>{t('auto_kopyala', 'Kopyala')}</span>
+                                                        </button>
+                                                    </div>
+                                                    <pre className="ai-chat-raw-json-pre">
+                                                        <code>{rawJsonString}</code>
+                                                    </pre>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );

@@ -1264,6 +1264,63 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
+   SAF JSON (RAW PAYLOAD) İNCELEME PANELİ
+   ───────────────────────────────────────────────────────────── */
+.ai-chat-raw-json-panel {
+  margin-top: 8px;
+  width: 100%;
+  max-width: 860px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+  background: var(--surface-secondary, rgba(15, 23, 42, 0.04));
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  font-family: var(--font-mono, 'JetBrains Mono', 'Fira Code', monospace);
+}
+
+.ai-chat-raw-json-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--surface-tertiary, rgba(148, 163, 184, 0.12));
+  border-bottom: 1px solid var(--border-color, rgba(148, 163, 184, 0.15));
+}
+
+.ai-chat-raw-json-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface-secondary, #ffffff);
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
+  color: var(--text-secondary, #64748b);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ai-chat-raw-json-copy-btn:hover {
+  background: var(--hover-bg, rgba(0, 0, 0, 0.05));
+  color: var(--text-primary, #0f172a);
+}
+
+.ai-chat-raw-json-pre {
+  margin: 0;
+  padding: 10px 14px;
+  max-height: 420px;
+  overflow: auto;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-primary, #0f172a);
+  background: transparent;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ─────────────────────────────────────────────────────────────
    ALT GİRİŞ PANELİ (INPUT AREA)
    ───────────────────────────────────────────────────────────── */
 .base-chat-input-area {
