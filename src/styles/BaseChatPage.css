@@ -831,6 +831,12 @@
   color: #ffffff;
 }
 
+.ai-chat-avatar.system {
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: var(--accent-primary, #6366f1);
+}
+
 /* Mesaj Gövdesi */
 .ai-chat-message-body {
   display: flex;
@@ -891,6 +897,14 @@
   align-self: flex-end;
   width: fit-content;
   max-width: 85%;
+}
+
+.ai-chat-bubble.system {
+  background: var(--surface-secondary, rgba(99, 102, 241, 0.04));
+  border: 1px dashed rgba(99, 102, 241, 0.4);
+  color: var(--text-primary, #1e293b);
+  border-radius: 12px;
+  font-size: 13px;
 }
 
 .ai-chat-bubble.error {

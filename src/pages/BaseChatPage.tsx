@@ -1672,6 +1672,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                             /* Mesajlar Listesi */
                             currentMessages.map((msg, index) => {
                                 const isUser = msg.role === 'user';
+                                const isSystem = msg.role === 'system';
                                 const isError = msg.role === 'error' || msg.isError;
 
                                 const rawJsonCandidate =
@@ -1728,16 +1729,20 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                 return (
                                     <div
                                         key={msg.id || index}
-                                        className={`ai-chat-message-row ${isUser ? 'user' : 'assistant'}`}
+                                        className={`ai-chat-message-row ${isUser ? 'user' : isSystem ? 'system' : 'assistant'}`}
                                     >
-                                        <div className={`ai-chat-avatar ${isUser ? 'user' : 'assistant'}`}>
-                                            {isUser ? '👤' : <Sparkles size={16} />}
+                                        <div className={`ai-chat-avatar ${isUser ? 'user' : isSystem ? 'system' : 'assistant'}`}>
+                                            {isUser ? '👤' : isSystem ? <Sliders size={15} /> : <Sparkles size={16} />}
                                         </div>
 
                                         <div className="ai-chat-message-body">
                                             <div className="ai-chat-message-header">
                                                 <span className="ai-chat-message-sender">
-                                                    {isUser ? t('auto_siz', 'Siz') : (msg.agentName || activeAgent?.ad || t('auto_ai_asistan', 'AI Asistanı'))}
+                                                    {isUser
+                                                        ? t('auto_siz', 'Siz')
+                                                        : isSystem
+                                                            ? t('auto_sistem_yonergesi', 'Sistem Yönergesi (System Prompt)')
+                                                            : (msg.agentName || activeAgent?.ad || t('auto_ai_asistan', 'AI Asistanı'))}
                                                 </span>
                                                 <span>•</span>
                                                 <span>{formatTime(msg.timestamp)}</span>
@@ -1791,7 +1796,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
 
                                             {/* Baloncuk İçeriği */}
                                             {(bubbleContent || !isUser || (msg.attachments && msg.attachments.length > 0) || (msg as any).eylemVerisiJson || msg.eylemPayload) && (
-                                            <div className={`ai-chat-bubble ${isUser ? 'user' : 'assistant'} ${isError ? 'error' : ''}`}>
+                                            <div className={`ai-chat-bubble ${isUser ? 'user' : isSystem ? 'system' : 'assistant'} ${isError ? 'error' : ''}`}>
                                                 <FormattedMessageContent content={bubbleContent} />
 
                                                 {/* Mesaja Eklenmiş Dosyalar */}
