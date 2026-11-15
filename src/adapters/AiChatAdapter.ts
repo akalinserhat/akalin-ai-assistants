@@ -87,6 +87,21 @@ export function createRestAiChatAdapter(options?: RestAiChatAdapterOptions): IAi
       });
     },
 
+    async checkRagStatuses(
+      bulutDosyaIdleri: number[],
+      options?: { otomatikBaslat?: boolean },
+      signal?: AbortSignal
+    ) {
+      const res = await axios.post(`${baseURL}/dosya-rag-durumu`, {
+        bulutDosyaIdleri,
+        otomatikBaslat: options?.otomatikBaslat ?? true
+      }, {
+        headers: getAuthHeaders(),
+        signal
+      });
+      return res.data;
+    },
+
     async renameSession(sessionId: number, newTitle: string): Promise<void> {
       await axios.put(`${baseURL}/oturumlar/${sessionId}`, {
         baslik: newTitle.trim()

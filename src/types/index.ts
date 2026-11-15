@@ -150,6 +150,43 @@ export interface AiSendMessageOptions {
   activeNodeId?: string;
 }
 
+export type RagDocumentStatusType =
+  | 'indexed'
+  | 'indexing'
+  | 'failed'
+  | 'not_indexed'
+  | 'unsupported'
+  | 'not_found';
+
+export interface RagFileStatusItem {
+  bulutDosyaId: number;
+  dosyaAdi: string;
+  destekleniyorMu: boolean;
+  durum: RagDocumentStatusType | string;
+  asama?: string;
+  ilerlemeYuzdesi?: number;
+  detayMesaji?: string;
+  sayfaSayisi?: number;
+  toplamParcaSayisi?: number;
+  chunkingMode?: string;
+  chunkingAgentKod?: string;
+  chunkingModel?: string;
+}
+
+export interface RagDosyaDurumResponse {
+  tumDosyalarHazirMi: boolean;
+  indeksleniyorMu: boolean;
+  hataVarMi: boolean;
+  dosyalar: RagFileStatusItem[];
+}
+
+export interface RagIndexingWaitState {
+  phase: 'indexing' | 'resuming' | 'failed';
+  files: RagFileStatusItem[];
+  message?: string;
+  startedAt?: number;
+}
+
 export interface AiChatContextType {
   isOpen: boolean;
   panelMode: AiPanelMode;
@@ -163,6 +200,7 @@ export interface AiChatContextType {
   messages: AiMessage[];
   loading: boolean;
   isSending: boolean;
+  ragIndexingState: RagIndexingWaitState | null;
   sendMessage: (
     text: string,
     customAgentId?: number,
@@ -221,6 +259,11 @@ export interface IAiChatAdapter {
   deleteSession: (sessionId: number) => Promise<void>;
   renameSession: (sessionId: number, newTitle: string) => Promise<void>;
   getAgents?: () => Promise<AgentDefinition[]>;
+  checkRagStatuses?: (
+    bulutDosyaIdleri: number[],
+    options?: { otomatikBaslat?: boolean },
+    signal?: AbortSignal
+  ) => Promise<RagDosyaDurumResponse>;
 }
 
 // ─── BİLEŞEN PROP TİPLERİ ───────────────────────────────────────────────────

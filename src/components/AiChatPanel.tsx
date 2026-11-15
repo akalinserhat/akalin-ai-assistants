@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAiChat, matchAgentForRoute } from '../context/AiChatContext';
 import { AiChatPanelProps, CloudFileItem, AgentHizliIstek } from '../types';
+import { RagIndexingWaitBanner } from './RagIndexingWaitBanner';
 import { AiActionCard } from './AiActionCard';
 import { AiMarkdownContent } from './AiMarkdownContent';
 import '../styles/AiChatPanel.css';
@@ -177,6 +178,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     setActiveSessionId,
     messages,
     isSending,
+    ragIndexingState,
     sendMessage,
     appendLocalExchange,
     stopGenerating,
@@ -1344,13 +1346,18 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
         {isSending && (
           <div className="ai-sending-block">
-            <TypingIndicatorComponent />
+            <RagIndexingWaitBanner
+              state={ragIndexingState}
+              elapsedSeconds={elapsedSeconds}
+              compact
+            />
+            {ragIndexingState?.phase !== 'indexing' && <TypingIndicatorComponent />}
             {AkalinUiResponseTimer ? (
               <AkalinUiResponseTimer
                 elapsedSeconds={elapsedSeconds}
                 onStop={stopGenerating}
                 agentName={currentAgent?.ad}
-                showLongWaitingWarning={true}
+                showLongWaitingWarning={ragIndexingState?.phase !== 'indexing'}
                 longWaitingThreshold={10}
               />
             ) : (

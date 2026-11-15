@@ -27,6 +27,15 @@
  * ============================================================================
  */
 
+import { RagIndexingWaitBanner } from '../components/RagIndexingWaitBanner';
+import { RagIndexingWaitState } from '../types';
+import {
+    extractCloudFileIds,
+    resolveRagStatusEndpoint,
+    checkRagStatusesViaEndpoint,
+    waitUntilCloudFilesRagReady
+} from '../utils/ragIndexingWaiter';
+
 import React, {
     useState,
     useEffect,
@@ -152,6 +161,7 @@ export interface BaseChatPageProps extends Omit<BasePageProps, 'onTitleEdit'> {
     // API & Backend Entegrasyonu
     apiEndpoint?: string;
     agentsEndpoint?: string;
+    ragStatusEndpoint?: string;
     documentType?: string;
 
     // Oturum (Session) Yönetimi
@@ -287,6 +297,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     extraDropdownActions,
     apiEndpoint = '/api/AiAjanlar/sohbet',
     agentsEndpoint = '/api/AiAjanlar',
+    ragStatusEndpoint,
     documentType = 'GenelSohbet',
     sessions: externalSessions,
     activeSessionId: externalActiveSessionId,
@@ -546,6 +557,13 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     }, []);
 
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const [ragIndexingState, setRagIndexingState] = useState<RagIndexingWaitState | null>(null);
+
+    useEffect(() => {
+        if (!isGenerating) {
+            setRagIndexingState(null);
+        }
+    }, [isGenerating]);
     const [searchSessionQuery, setSearchSessionQuery] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(defaultHistoryOpen);
     const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -837,6 +855,67 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
         setPendingAttachments([]);
         setIsGenerating(true);
 
+        abortControllerRef.current = new AbortController();
+
+        const cloudFileIds = extractCloudFileIds({
+            text: userMessage.content,
+            attachments: userMessage.attachments,
+            extraTexts: currentMessages.map(m => m.content)
+        });
+
+        if (cloudFileIds.length > 0) {
+            const statusUrl = resolveRagStatusEndpoint(apiEndpoint, ragStatusEndpoint);
+            try {
+                const waitResult = await waitUntilCloudFilesRagReady({
+                    ids: cloudFileIds,
+                    checkStatus: (ids, opts, sig) =>
+                        checkRagStatusesViaEndpoint(statusUrl, ids, opts, sig),
+                    signal: abortControllerRef.current.signal,
+                    onProgress: setRagIndexingState
+                });
+
+                if (waitResult.failed) {
+                    const errMsg =
+                        waitResult.errorMessage ||
+                        t('auto_rag_indeks_hatasi', 'Dosya RAG indeksleme işlemi tamamlanamadı.');
+                    toast.error(errMsg);
+                    if (!externalMessages) {
+                        setLocalSessions(prev => prev.map(s => {
+                            if (s.id?.toString() === activeSessionId?.toString()) {
+                                return {
+                                    ...s,
+                                    updatedAt: new Date().toISOString(),
+                                    messages: [
+                                        ...s.messages,
+                                        {
+                                            id: assistantMsgId,
+                                            role: 'assistant',
+                                            content: `⚠️ **Dosya İndeksleme Hatası:** ${errMsg}`,
+                                            timestamp: new Date().toISOString(),
+                                            agentName: activeAgent?.ad || t('auto_erp_asistani', 'ERP Asistanı'),
+                                            model: activeAgent?.modelAdi || defaultModel
+                                        }
+                                    ]
+                                };
+                            }
+                            return s;
+                        }));
+                    }
+                    setIsGenerating(false);
+                    setRagIndexingState(null);
+                    abortControllerRef.current = null;
+                    return;
+                }
+            } catch (err: any) {
+                if (axios.isCancel(err) || err?.name === 'CanceledError' || err?.message === 'canceled') {
+                    setIsGenerating(false);
+                    setRagIndexingState(null);
+                    abortControllerRef.current = null;
+                    return;
+                }
+            }
+        }
+
         // Harici onSendMessage verilmişse ona devret
         if (onSendMessage) {
             try {
@@ -876,12 +955,16 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 toast.error(err?.message || t('auto_mesaj_gonderilemedi', 'Mesaj gönderilemedi.'));
             } finally {
                 setIsGenerating(false);
+                setRagIndexingState(null);
+                abortControllerRef.current = null;
             }
             return;
         }
 
         // Yerleşik Axios Yapay Zeka Çağrısı
-        abortControllerRef.current = new AbortController();
+        if (!abortControllerRef.current || abortControllerRef.current.signal.aborted) {
+            abortControllerRef.current = new AbortController();
+        }
         const requestStartTime = Date.now();
 
         try {
@@ -1021,6 +1104,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
             abortControllerRef.current.abort();
         }
         setIsGenerating(false);
+        setRagIndexingState(null);
         onStopGeneration?.();
     };
 
@@ -1975,10 +2059,16 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                         {/* Yapay Zeka Yanıt Üretirken Canlı Göstergeler */}
                         {isGenerating && (
                             <div className="flex flex-col gap-6">
-                                <AiTypingIndicator
-                                    showAvatar={true}
-                                    statusText={t('auto_ai_yanit_hazirliyor', 'Yapay zeka yanıtı hazırlıyor...')}
+                                <RagIndexingWaitBanner
+                                    state={ragIndexingState}
+                                    elapsedSeconds={elapsedSeconds}
                                 />
+                                {ragIndexingState?.phase !== 'indexing' && (
+                                    <AiTypingIndicator
+                                        showAvatar={true}
+                                        statusText={t('auto_ai_yanit_hazirliyor', 'Yapay zeka yanıtı hazırlıyor...')}
+                                    />
+                                )}
                                 {enableResponseTimer && (
                                     <AiResponseTimer
                                         elapsedSeconds={elapsedSeconds}

@@ -15,9 +15,16 @@ import {
   AiChatProviderProps,
   AgentDefinition,
   AiAttachedFilePayload,
-  IAiChatAdapter
+  IAiChatAdapter,
+  RagIndexingWaitState
 } from '../types';
 import { createRestAiChatAdapter } from '../adapters/AiChatAdapter';
+import {
+  extractCloudFileIds,
+  resolveRagStatusEndpoint,
+  checkRagStatusesViaEndpoint,
+  waitUntilCloudFilesRagReady
+} from '../utils/ragIndexingWaiter';
 
 // ─── VARSAYILAN SİSTEM AJANLARI ─────────────────────────────────────────────
 
@@ -264,6 +271,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [ragIndexingState, setRagIndexingState] = useState<RagIndexingWaitState | null>(null);
   const [agents, setAgents] = useState<AgentDefinition[]>(defaultAgents);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
 
@@ -272,6 +280,10 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
   });
 
   const isSendingSessionRef = useRef<number | null>(null);
+  const messagesRef = useRef<AiMessage[]>([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Yeni temiz oturum oluştur ve aktif yap
   const startNewSession = useCallback(async () => {
@@ -488,6 +500,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsSending(false);
+      setRagIndexingState(null);
       toast('AI yanıtı durduruldu.', { icon: '⏹️' });
     }
   }, []);
@@ -539,6 +552,50 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
     abortControllerRef.current = new AbortController();
 
     try {
+      const cloudFileIds = extractCloudFileIds({
+        text,
+        attachments: ekDosyalar,
+        extraTexts: [
+          pageContext?.data ? JSON.stringify(pageContext.data) : undefined,
+          ...messagesRef.current.map(m => m.icerik)
+        ]
+      });
+
+      if (cloudFileIds.length > 0) {
+        const waitResult = await waitUntilCloudFilesRagReady({
+          ids: cloudFileIds,
+          checkStatus: (ids, opts, sig) =>
+            adapterRef.current.checkRagStatuses
+              ? adapterRef.current.checkRagStatuses(ids, opts, sig)
+              : checkRagStatusesViaEndpoint(
+                  resolveRagStatusEndpoint(apiEndpoint),
+                  ids,
+                  opts,
+                  sig
+                ),
+          signal: abortControllerRef.current.signal,
+          onProgress: setRagIndexingState
+        });
+
+        if (waitResult.failed) {
+          const errMsg =
+            waitResult.errorMessage ||
+            'Dosya RAG indeksleme işlemi tamamlanamadı. Lütfen bulut depolama durumunu kontrol edip tekrar deneyin.';
+          toast.error(errMsg);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              aiSohbetOturumuId: currentSessionId || 0,
+              role: 'assistant',
+              icerik: `⚠️ **Dosya İndeksleme Hatası:** ${errMsg}`,
+              tarih: new Date().toISOString()
+            }
+          ]);
+          return;
+        }
+      }
+
       const payload = {
         aiSohbetOturumuId: currentSessionId,
         oturumId: currentSessionId,
@@ -599,9 +656,10 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
       ]);
     } finally {
       setIsSending(false);
+      setRagIndexingState(null);
       abortControllerRef.current = null;
     }
-  }, [activeSessionId, isSending, selectedAgentId, pageContext]);
+  }, [activeSessionId, apiEndpoint, isSending, selectedAgentId, pageContext]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -637,6 +695,7 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
         messages,
         loading,
         isSending,
+        ragIndexingState,
         sendMessage,
         appendLocalExchange,
         stopGenerating,

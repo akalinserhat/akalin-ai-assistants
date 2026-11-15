@@ -12,6 +12,8 @@ export * from './locales/defaultLocales';
 
 // Adaptörler
 export * from './adapters/AiChatAdapter';
+export * from './utils/ragIndexingWaiter';
+export { RagIndexingWaitBanner, type RagIndexingWaitBannerProps } from './components/RagIndexingWaitBanner';
 
 // Context ve Hook'lar
 export {

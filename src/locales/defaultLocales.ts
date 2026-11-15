@@ -41,7 +41,21 @@ export const AI_ASSISTANTS_LOCALES = {
     'Yanıtınız sohbete iletildi.': 'Yanıtınız sohbete iletildi.',
     'TAMAMLANDI': 'TAMAMLANDI',
     'KULLANICI BEKLENİYOR': 'KULLANICI BEKLENİYOR',
-    'Evet, onaylıyorum. İşlemi tamamla.': 'Evet, onaylıyorum. İşlemi tamamla.'
+    'Evet, onaylıyorum. İşlemi tamamla.': 'Evet, onaylıyorum. İşlemi tamamla.',
+    'ai_rag_asama_queued': 'Sırada bekliyor',
+    'ai_rag_asama_extracting': 'Belge metni çıkarılıyor',
+    'ai_rag_asama_chunking_agent': 'RAG-CHUNK-UZMANI bölümlüyor',
+    'ai_rag_asama_embedding': 'Vektör indeksi oluşturuluyor',
+    'ai_rag_asama_saving': 'RAG tablolarına kaydediliyor',
+    'ai_rag_asama_indexed': 'İndekslendi',
+    'ai_rag_asama_failed': 'İndeksleme başarısız',
+    'ai_rag_asama_preparing': 'ThinkPort indekslemesi hazırlanıyor',
+    'ai_rag_indeks_hata_baslik': 'Dosya İndekslenemedi',
+    'ai_rag_indeks_tamamlandi_baslik': 'İndeksleme Tamamlandı — İşleme Devam Ediliyor',
+    'ai_rag_indeksleniyor_baslik': 'Dosya İndeksleme Aşamasında',
+    'ai_rag_indeks_hata_aciklama': 'ThinkPort belge indekslemesi sırasında bir sorun oluştu.',
+    'ai_rag_indeks_tamamlandi_aciklama': 'Belge RAG veritabanına aktarıldı. İşleminiz kaldığı yerden otomatik olarak devam ediyor...',
+    'ai_rag_indeksleniyor_aciklama': 'Seçili belge ThinkPort gecikmesi / kuyruğu nedeniyle şu anda RAG veritabanına indeksleniyor. İndeksleme tamamlandığında işleminiz kaldığı yerden otomatik olarak devam edecektir.'
   },
   en: {
     'ai_asistan_baslik': 'AI Assistant',
@@ -79,6 +93,20 @@ export const AI_ASSISTANTS_LOCALES = {
     'Yanıtınız sohbete iletildi.': 'Your response has been sent to the chat.',
     'TAMAMLANDI': 'COMPLETED',
     'KULLANICI BEKLENİYOR': 'WAITING FOR USER',
-    'Evet, onaylıyorum. İşlemi tamamla.': 'Yes, I confirm. Complete the operation.'
+    'Evet, onaylıyorum. İşlemi tamamla.': 'Yes, I confirm. Complete the operation.',
+    'ai_rag_asama_queued': 'Queued',
+    'ai_rag_asama_extracting': 'Extracting document text',
+    'ai_rag_asama_chunking_agent': 'Chunking via RAG-CHUNK-UZMANI',
+    'ai_rag_asama_embedding': 'Generating vector embeddings',
+    'ai_rag_asama_saving': 'Saving to RAG tables',
+    'ai_rag_asama_indexed': 'Indexed',
+    'ai_rag_asama_failed': 'Indexing failed',
+    'ai_rag_asama_preparing': 'Preparing ThinkPort indexing',
+    'ai_rag_indeks_hata_baslik': 'File Indexing Failed',
+    'ai_rag_indeks_tamamlandi_baslik': 'Indexing Complete — Resuming Request',
+    'ai_rag_indeksleniyor_baslik': 'Document Indexing in Progress',
+    'ai_rag_indeks_hata_aciklama': 'An error occurred while indexing the document in ThinkPort.',
+    'ai_rag_indeks_tamamlandi_aciklama': 'The document has been indexed into the RAG database. Resuming your request automatically...',
+    'ai_rag_indeksleniyor_aciklama': 'The selected file is currently being indexed into the RAG database by ThinkPort. Your request will resume automatically from where it left off once indexing finishes.'
   }
 };
