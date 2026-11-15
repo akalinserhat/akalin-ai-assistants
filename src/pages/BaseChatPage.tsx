@@ -790,7 +790,10 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     };
 
     // ─── Mesaj Gönderme & Yapay Zeka Çağrısı ─────────────────────────────────
-    const handleSendMessage = async (customPrompt?: string) => {
+    const handleSendMessage = async (
+        customPrompt?: string,
+        options?: { workflowId?: string; activeNodeId?: string }
+    ) => {
         const textToSend = customPrompt || inputText;
         if (!textToSend.trim() && pendingAttachments.length === 0) return;
         if (isGenerating) return;
@@ -890,7 +893,9 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                 ekler: userMessage.attachments,
                 model: defaultModel || activeAgent?.modelAdi || 'default',
                 sistemPromptu: effectiveSystemPrompt || activeAgent?.sistemPromptu || undefined,
-                gecmis: currentMessages.map(m => ({ role: m.role, content: m.content }))
+                gecmis: currentMessages.map(m => ({ role: m.role, content: m.content })),
+                workflowId: options?.workflowId,
+                activeNodeId: options?.activeNodeId
             };
 
             const response = await axios.post(apiEndpoint, payload, {
@@ -1476,24 +1481,32 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                                     ? '/araclar/bulut-dosyalari'
                                                                     : '');
 
-                                                    const isFormOpenStep =
-                                                        nodeTip === 'FORM_AC' ||
-                                                        nodeTip === 'EKRAN_AC' ||
-                                                        Boolean(nodeTargetRoute) ||
-                                                        nodeUiAction === 'OZEL_ROTA';
+                                                    const isAiProcessStep =
+                                                        nodeTip === 'AI_ISLEM' ||
+                                                        nodeTip === 'MCP_SORGULA' ||
+                                                        nodeTip === 'BELGE_OLUSTUR';
 
-                                                    const effectiveUiAction = isFormOpenStep
-                                                        ? (nodeUiAction && nodeUiAction !== 'YOK' ? nodeUiAction : 'OZEL_ROTA')
-                                                        : (sug.uiAksiyonu && sug.uiAksiyonu !== 'YOK')
-                                                            ? sug.uiAksiyonu
-                                                            : (nodeUiAction || 'YOK');
+                                                    const isFormOpenStep =
+                                                        !isAiProcessStep &&
+                                                        (nodeTip === 'FORM_AC' ||
+                                                            nodeTip === 'EKRAN_AC' ||
+                                                            Boolean(nodeTargetRoute) ||
+                                                            nodeUiAction === 'OZEL_ROTA');
+
+                                                    const effectiveUiAction = isAiProcessStep
+                                                        ? 'YOK'
+                                                        : isFormOpenStep
+                                                            ? (nodeUiAction && nodeUiAction !== 'YOK' ? nodeUiAction : 'OZEL_ROTA')
+                                                            : (sug.uiAksiyonu && sug.uiAksiyonu !== 'YOK')
+                                                                ? sug.uiAksiyonu
+                                                                : (nodeUiAction || 'YOK');
+
+                                                    const firstNodeId = firstActionNode?.id || firstActionNode?.Id || undefined;
 
                                                     const effectivePrompt = (
-                                                        sug.prompt ||
-                                                        baslaNode?.prompt ||
-                                                        baslaNode?.Prompt ||
-                                                        firstActionNode?.prompt ||
-                                                        firstActionNode?.Prompt ||
+                                                        (isAiProcessStep
+                                                            ? (firstActionNode?.prompt || firstActionNode?.Prompt || sug.prompt || baslaNode?.prompt || baslaNode?.Prompt)
+                                                            : (sug.prompt || baslaNode?.prompt || baslaNode?.Prompt || firstActionNode?.prompt || firstActionNode?.Prompt)) ||
                                                         sug.baslik ||
                                                         sug.title ||
                                                         ''
@@ -1508,6 +1521,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                         uiParametreleriJson: nodeTargetRoute || sug.uiParametreleriJson,
                                                         akisDugumleri: rawNodes
                                                     };
+                                                    (item as any).activeNodeId = firstNodeId;
 
                                                     if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
                                                         setPendingHizliIstek(item);
@@ -1601,7 +1615,12 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                             waitingEntityPayload: {
                                                                 entityType: nodeVarlikKodu || firstActionNode?.baslik || 'Form',
                                                                 entityLabel,
+                                                                varlikKodu: nodeVarlikKodu,
+                                                                varlikTuru: firstActionNode?.varlikTuru || firstActionNode?.VarlikTuru || '',
+                                                                modulKodu: firstActionNode?.modulKodu || firstActionNode?.ModulKodu || '',
                                                                 targetUrl: resolvedTargetRoute,
+                                                                returnRoute: currentRoute,
+                                                                agentId: activeAgent?.id,
                                                                 workflowId: item.id,
                                                                 workflowTitle: item.baslik,
                                                                 workflowPrompt: effectivePrompt,
@@ -1609,6 +1628,7 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                                 nodePrompt: (firstActionNode?.prompt || firstActionNode?.Prompt || '').trim(),
                                                                 sonrakiDugumId: nextNodeAfterForm ? (nextNodeAfterForm.id || nextNodeAfterForm.Id) : '',
                                                                 sonrakiDugum: nextNodeAfterForm || null,
+                                                                akisDugumleri: rawNodes,
                                                                 hariciSayfaAyarlari:
                                                                     firstActionNode?.hariciSayfaAyarlari ||
                                                                     firstActionNode?.HariciSayfaAyarlari ||
@@ -1647,7 +1667,14 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     }
 
                                                     if (effectivePrompt) {
-                                                        await handleSendMessage(effectivePrompt);
+                                                        const workflowOpts = item.id
+                                                            ? { workflowId: String(item.id), activeNodeId: firstNodeId ? String(firstNodeId) : undefined }
+                                                            : undefined;
+                                                        const useCleanMsg = Boolean(item.id && rawNodes.length > 0 && isAiProcessStep);
+                                                        const msgToSend = useCleanMsg
+                                                            ? (sug.dugmeBasligi || item.baslik || effectivePrompt).trim()
+                                                            : effectivePrompt;
+                                                        await handleSendMessage(msgToSend, workflowOpts);
                                                     }
                                                 }}
                                             >
@@ -2097,10 +2124,17 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                         setIsCloudPickerOpen(false);
 
                         if (pendingHizliIstek) {
-                            const basePrompt = (pendingHizliIstek.prompt || pendingHizliIstek.baslik || '').trim();
+                            const activePending = pendingHizliIstek;
+                            const basePrompt = (activePending.prompt || activePending.baslik || '').trim();
                             const combinedPrompt = `${basePrompt}\n\n[Eklenen Bulut Dosyası: ${file.dosyaAdi} (ID: ${file.id}, URL: ${file.url})]`;
+                            const workflowOpts = activePending.id
+                                ? {
+                                      workflowId: String(activePending.id),
+                                      activeNodeId: (activePending as any).activeNodeId ? String((activePending as any).activeNodeId) : undefined
+                                  }
+                                : undefined;
                             setPendingHizliIstek(null);
-                            await handleSendMessage(combinedPrompt);
+                            await handleSendMessage(combinedPrompt, workflowOpts);
                             return;
                         }
 
@@ -2186,11 +2220,18 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                 onClick={async () => {
                                     if (!modalInputText.trim() || isGenerating) return;
                                     setIsTextModalOpen(false);
-                                    const basePrompt = (pendingHizliIstek?.prompt || pendingHizliIstek?.baslik || '').trim();
+                                    const activePending = pendingHizliIstek;
+                                    const basePrompt = (activePending?.prompt || activePending?.baslik || '').trim();
                                     const finalMessage = `${basePrompt}\n\n[KULLANICI TARAFINDAN GİRİLEN METİN]:\n${modalInputText.trim()}`;
+                                    const workflowOpts = activePending?.id
+                                        ? {
+                                              workflowId: String(activePending.id),
+                                              activeNodeId: (activePending as any).activeNodeId ? String((activePending as any).activeNodeId) : undefined
+                                          }
+                                        : undefined;
                                     setPendingHizliIstek(null);
                                     setModalInputText('');
-                                    await handleSendMessage(finalMessage);
+                                    await handleSendMessage(finalMessage, workflowOpts);
                                 }}
                             >
                                 <Sparkles size={15} />

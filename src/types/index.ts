@@ -145,6 +145,11 @@ export interface AgentDefinition {
 
 // ─── CONTEXT VE PROVIDER TİPLERİ ────────────────────────────────────────────
 
+export interface AiSendMessageOptions {
+  workflowId?: string;
+  activeNodeId?: string;
+}
+
 export interface AiChatContextType {
   isOpen: boolean;
   panelMode: AiPanelMode;
@@ -158,7 +163,12 @@ export interface AiChatContextType {
   messages: AiMessage[];
   loading: boolean;
   isSending: boolean;
-  sendMessage: (text: string, customAgentId?: number, ekDosyalar?: AiAttachedFilePayload[]) => Promise<void>;
+  sendMessage: (
+    text: string,
+    customAgentId?: number,
+    ekDosyalar?: AiAttachedFilePayload[],
+    options?: AiSendMessageOptions
+  ) => Promise<void>;
   appendLocalExchange: (userText: string, assistantText: string, eylemVerisiJson?: string) => void;
   stopGenerating: () => void;
   createNewSession: (title?: string) => Promise<number | null>;
@@ -198,6 +208,8 @@ export interface IAiChatAdapter {
     eylemVerisiJson?: string;
     dosyaIdleri?: number[];
     ekDosyalar?: AiAttachedFilePayload[];
+    workflowId?: string;
+    activeNodeId?: string;
   }, signal?: AbortSignal) => Promise<{
     oturumId: number;
     oturumBaslik?: string;

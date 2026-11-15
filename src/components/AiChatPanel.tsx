@@ -520,7 +520,14 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           }
         }
         setAttachedFiles([]);
-        sendMessageRef.current(messageToSend, effectiveCustomAgentId, ekDosyalar);
+        const resolvedNextNodeId = nextNode?.id || nextNode?.Id || (detail.sonrakiDugumId ? String(detail.sonrakiDugumId).trim() : '');
+        const filesWorkflowOpts = detail.workflowId
+          ? {
+              workflowId: String(detail.workflowId),
+              activeNodeId: resolvedNextNodeId || undefined
+            }
+          : undefined;
+        sendMessageRef.current(messageToSend, effectiveCustomAgentId, ekDosyalar, filesWorkflowOpts);
         return;
       }
 
@@ -574,11 +581,33 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           ? `[Önceki Düğümden Aktarılan Belge/Kart JSON Verisi (belgeVerisi)]:\n\`\`\`json\n${JSON.stringify(belgeVerisiObj, null, 2)}\n\`\`\``
           : '';
 
+        let effectiveSavedAgentId: number | undefined = detail.agentId ? Number(detail.agentId) : undefined;
+        if (!effectiveSavedAgentId && typeof sessionStorage !== 'undefined') {
+          try {
+            const rawWaiting = sessionStorage.getItem('webakus_ai_waiting_entity');
+            if (rawWaiting) {
+              const parsedWaiting = JSON.parse(rawWaiting);
+              if (parsedWaiting?.agentId) {
+                effectiveSavedAgentId = Number(parsedWaiting.agentId);
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+        const resolvedSavedNextNodeId = nextNode?.id || nextNode?.Id || (detail.sonrakiDugumId ? String(detail.sonrakiDugumId).trim() : '');
+        const savedWorkflowOpts = detail.workflowId
+          ? {
+              workflowId: String(detail.workflowId),
+              activeNodeId: resolvedSavedNextNodeId || undefined
+            }
+          : undefined;
+
         const bodyMessage = summary
           ? `"${entityLabel}" kaydını aşağıdaki bilgilerle tamamladım:\n${summary}\n\n${belgeJsonBlock}\n\nLütfen kaydedilen bu bilgileri bana özetleyerek teyit et ve görev akışındaki bir sonraki adıma geç.`
           : `"${entityLabel}" kaydını tamamladım. Lütfen kaydedilen bilgileri teyit et ve görev akışındaki bir sonraki adıma geç.`;
         const replyMessage = rawNextPrompt ? `${rawNextPrompt}\n\n${bodyMessage}` : bodyMessage;
-        sendMessageRef.current(replyMessage);
+        sendMessageRef.current(replyMessage, effectiveSavedAgentId, undefined, savedWorkflowOpts);
       }
     };
 
@@ -842,14 +871,16 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     const resolvedEffectivePrompt = resolveWorkflowTemplateExpressions(rawEffectivePrompt);
     const effectivePrompt = [targetMcpDirective, resolvedEffectivePrompt].filter(Boolean).join('\n\n');
 
+    const firstNodeId = firstActionNode?.id || firstActionNode?.Id || undefined;
+
     if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
-      setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction });
+      setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction, activeNodeId: firstNodeId } as any);
       setIsCloudPickerOpen(true);
       return;
     }
 
     if (effectiveUiAction === 'METIN_YAPISTIR_MODAL') {
-      setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction });
+      setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction, activeNodeId: firstNodeId } as any);
       setModalInputText('');
       setIsTextModalOpen(true);
       return;
@@ -966,6 +997,14 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     }
 
     if (effectivePrompt) {
+      const workflowOpts = item.id
+        ? { workflowId: String(item.id), activeNodeId: firstNodeId ? String(firstNodeId) : undefined }
+        : undefined;
+      const useCleanUserMessage = Boolean(item.id && rawNodes.length > 0 && isAiProcessStep);
+      const userFacingPrompt = useCleanUserMessage
+        ? (item.dugmeBasligi || item.baslik || effectivePrompt).trim()
+        : effectivePrompt;
+
       if (attachedFiles.length > 0) {
         const ekDosyalar = attachedFiles.map(f => ({
           dosyaAdi: f.dosyaAdi,
@@ -983,9 +1022,9 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           )
           .join('\n');
         setAttachedFiles([]);
-        await sendMessage(`${fileTags}\n\n${effectivePrompt}`, undefined, ekDosyalar);
+        await sendMessage(`${fileTags}\n\n${userFacingPrompt}`, undefined, ekDosyalar, workflowOpts);
       } else {
-        await sendMessage(effectivePrompt);
+        await sendMessage(userFacingPrompt, undefined, undefined, workflowOpts);
       }
     }
   };
@@ -993,11 +1032,18 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const handleConfirmTextModal = async () => {
     if (!modalInputText.trim() || isSending) return;
     setIsTextModalOpen(false);
-    const basePrompt = (pendingHizliIstek?.prompt || pendingHizliIstek?.baslik || '').trim();
+    const activePending = pendingHizliIstek;
+    const basePrompt = (activePending?.prompt || activePending?.baslik || '').trim();
     const finalMessage = `${basePrompt}\n\n[KULLANICI TARAFINDAN GİRİLEN METİN]:\n${modalInputText.trim()}`;
+    const workflowOpts = activePending?.id
+      ? {
+          workflowId: String(activePending.id),
+          activeNodeId: (activePending as any).activeNodeId ? String((activePending as any).activeNodeId) : undefined
+        }
+      : undefined;
     setPendingHizliIstek(null);
     setModalInputText('');
-    await sendMessage(finalMessage);
+    await sendMessage(finalMessage, undefined, undefined, workflowOpts);
   };
 
   if (!isOpen) return null;
@@ -1431,7 +1477,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
             setIsCloudPickerOpen(false);
 
             if (pendingHizliIstek) {
-              const basePrompt = (pendingHizliIstek.prompt || pendingHizliIstek.baslik || '').trim();
+              const activePending = pendingHizliIstek;
+              const basePrompt = (activePending.prompt || activePending.baslik || '').trim();
               const combinedPrompt = `[📎 Bulut Dosyası: ${file.dosyaAdi} (ID: ${file.id}, Tür: ${file.dosyaTipi || 'Belge'})]\n\n${basePrompt}`;
               const cloudEkDosyalar = [
                 {
@@ -1441,8 +1488,14 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
                   bulutDosyaId: file.id
                 }
               ];
+              const workflowOpts = activePending.id
+                ? {
+                    workflowId: String(activePending.id),
+                    activeNodeId: (activePending as any).activeNodeId ? String((activePending as any).activeNodeId) : undefined
+                  }
+                : undefined;
               setPendingHizliIstek(null);
-              await sendMessage(combinedPrompt, undefined, cloudEkDosyalar);
+              await sendMessage(combinedPrompt, undefined, cloudEkDosyalar, workflowOpts);
               return;
             }
 

@@ -515,7 +515,12 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
   }, [activeSessionId]);
 
   // Mesaj gönder
-  const sendMessage = useCallback(async (text: string, customAgentId?: number, ekDosyalar?: AiAttachedFilePayload[]) => {
+  const sendMessage = useCallback(async (
+    text: string,
+    customAgentId?: number,
+    ekDosyalar?: AiAttachedFilePayload[],
+    options?: { workflowId?: string; activeNodeId?: string }
+  ) => {
     if (!text.trim() || isSending) return;
 
     const currentSessionId = activeSessionId;
@@ -541,7 +546,9 @@ export const AiChatProvider: React.FC<AiChatProviderProps> = ({
         aiAjanId: customAgentId || selectedAgentId,
         sayfaBaglami: pageContext.route,
         eylemVerisiJson: pageContext.data ? JSON.stringify(pageContext.data) : undefined,
-        ekDosyalar: ekDosyalar && ekDosyalar.length > 0 ? ekDosyalar : undefined
+        ekDosyalar: ekDosyalar && ekDosyalar.length > 0 ? ekDosyalar : undefined,
+        workflowId: options?.workflowId,
+        activeNodeId: options?.activeNodeId
       };
 
       const result = await adapterRef.current.sendMessage(payload, abortControllerRef.current.signal);
