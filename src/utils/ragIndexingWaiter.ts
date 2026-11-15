@@ -173,6 +173,7 @@ export interface WaitUntilCloudFilesRagReadyOptions {
   onProgress?: (state: RagIndexingWaitState | null) => void;
   pollIntervalMs?: number;
   maxWaitMs?: number;
+  maxStallMs?: number;
 }
 
 export interface WaitUntilCloudFilesRagReadyResult {
@@ -194,13 +195,16 @@ export const waitUntilCloudFilesRagReady = async ({
   signal,
   onProgress,
   pollIntervalMs = 1500,
-  maxWaitMs = 360000
+  maxWaitMs = 900000,
+  maxStallMs = 240000
 }: WaitUntilCloudFilesRagReadyOptions): Promise<WaitUntilCloudFilesRagReadyResult> => {
   if (!ids || ids.length === 0) {
     return { ready: true, waited: false, failed: false };
   }
 
   const startedAt = Date.now();
+  let lastProgressAt = startedAt;
+  let lastProgressSignature = '';
   let waited = false;
 
   while (true) {
@@ -273,15 +277,27 @@ export const waitUntilCloudFilesRagReady = async ({
 
     waited = true;
     const displayFiles = pendingFiles.length > 0 ? pendingFiles : files;
+    const progressSignature = displayFiles
+      .map(
+        (f) =>
+          `${f.bulutDosyaId}:${f.durum || ''}:${f.asama || ''}:${f.ilerlemeYuzdesi ?? ''}:${f.detayMesaji || ''}`
+      )
+      .join('|');
+    if (progressSignature && progressSignature !== lastProgressSignature) {
+      lastProgressSignature = progressSignature;
+      lastProgressAt = Date.now();
+    }
+
     onProgress?.({
       phase: 'indexing',
       files: displayFiles,
       startedAt
     });
 
-    if (Date.now() - startedAt >= maxWaitMs) {
+    const now = Date.now();
+    if (now - lastProgressAt >= maxStallMs || now - startedAt >= maxWaitMs) {
       const timeoutMsg =
-        'ThinkPort dosya indekslemesi beklenen sürede tamamlanamadı. Lütfen birkaç saniye sonra tekrar deneyin.';
+        'ThinkPort dosya indekslemesi beklenen sürede ilerleme kaydetmedi veya zaman aşımına uğradı. Lütfen birkaç saniye sonra tekrar deneyin.';
       onProgress?.({
         phase: 'failed',
         files,
