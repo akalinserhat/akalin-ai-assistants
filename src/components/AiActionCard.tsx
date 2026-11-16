@@ -21,6 +21,7 @@ import {
   ListFilter
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { reportErrorToAdmin } from '@akalin/notification_module';
 import { AiActionCardProps, AiActionOptionItem } from '../types';
 import { AiChatContext } from '../context/AiChatContext';
 
@@ -125,10 +126,10 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         ? '/bsh-fiyat-farki/yeni/excel-import'
         : '/fiyat-listeleri/yeni/excel-import')
     : getDefaultRoute(belgeTuru);
-  const targetUrl = data.yonlendirmeUrl || data.targetUrl || defaultRoute;
+  const isFormOpen = eylemTipi === 'FORM_AC' || eylemTipi === 'EKRAN_AC';
+  const targetUrl = data.yonlendirmeUrl || data.targetUrl || (isFormOpen ? '' : defaultRoute);
   const kalemSayisi = data.kalemler?.length || data.items?.length || 0;
   const kampanyaSayisi = data.kampanyalar?.length || data.content?.details?.length || 0;
-  const isFormOpen = eylemTipi === 'FORM_AC' || eylemTipi === 'EKRAN_AC';
   const isNavigation = eylemTipi === 'SAYFAYA_GIT' || eylemTipi === 'NAVIGASYON' || isFormOpen;
 
   // Güncel ajan tanımlarından bu düğüme ait hariciSayfaAyarlari verisini canlı çözümle
@@ -222,9 +223,19 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
       }
       toast.success(data.basariMesaji || t('Excel içe aktarım ekranı açılıyor...'));
-    } else if (isFormOpen && targetUrl) {
+    } else if (isFormOpen) {
+      const formTarget = (targetUrl || '').trim();
+      if (!formTarget || formTarget === '/') {
+        reportErrorToAdmin({
+          url: typeof window !== 'undefined' ? window.location.href : '',
+          hataMesaji: `[Görev Akışı: ${data.waitingEntityPayload?.workflowTitle || data.baslik || 'Form Aç'}] "Form Aç" eyleminde açılacak form veya hedef rota tanımlanmamış.`,
+          detay: JSON.stringify(data.waitingEntityPayload || data)
+        });
+        toast.error(t('form_ac_hedef_tanimsiz', 'Açılacak form veya ekran tanımlanmamış. Lütfen görev akışı ayarlarından "Form Aç" düğümünde geçerli bir Belge, Kart veya Liste seçiniz.'));
+        return;
+      }
       const originRoute = data.returnRoute || (typeof window !== 'undefined' ? window.location.pathname : '/');
-      navigate(targetUrl, {
+      navigate(formTarget, {
         state: {
           initialAiData: {
             ...data,

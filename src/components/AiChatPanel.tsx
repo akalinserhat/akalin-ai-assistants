@@ -7,6 +7,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
+import { reportErrorToAdmin } from '@akalin/notification_module';
 import {
   Bot, Sparkles, X, Plus, Trash2, Edit3, Check, MessageSquare,
   Send, Mic, MicOff, Layers, Maximize2, Compass, Sparkle, Paperclip,
@@ -866,13 +867,13 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
     const firstNodeId = firstActionNode?.id || firstActionNode?.Id || undefined;
 
-    if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
+    if (!isFormOpenStep && effectiveUiAction === 'BULUT_DOSYA_SEC') {
       setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction, activeNodeId: firstNodeId } as any);
       setIsCloudPickerOpen(true);
       return;
     }
 
-    if (effectiveUiAction === 'METIN_YAPISTIR_MODAL') {
+    if (!isFormOpenStep && effectiveUiAction === 'METIN_YAPISTIR_MODAL') {
       setPendingHizliIstek({ ...item, prompt: effectivePrompt, uiAksiyonu: effectiveUiAction, activeNodeId: firstNodeId } as any);
       setModalInputText('');
       setIsTextModalOpen(true);
@@ -881,7 +882,46 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
     if (isFormOpenStep || (effectiveUiAction && effectiveUiAction !== 'YOK')) {
       const currentRoute = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
-      const resolvedTargetRoute = nodeTargetRoute || item.uiParametreleriJson || '';
+      const resolvedTargetRoute = (nodeTargetRoute || item.uiParametreleriJson || '').trim();
+      const isFormConfigured =
+        (Boolean(resolvedTargetRoute) && resolvedTargetRoute !== '/') ||
+        Boolean(nodeVarlikKodu) ||
+        Boolean(firstActionNode?.mcpVarlikId);
+
+      if (isFormOpenStep && !isFormConfigured) {
+        reportErrorToAdmin({
+          url: window.location.href,
+          hataMesaji: `[Görev Akışı: ${item.baslik || 'Form Aç'}] "Form Aç" adımında açılacak form veya ekran tanımlanmamış.`,
+          detay: JSON.stringify({
+            workflowId: item.id,
+            workflowTitle: item.baslik,
+            nodeId: firstNodeId,
+            node: firstActionNode
+          })
+        });
+        toast.error(
+          t(
+            'form_ac_hedef_tanimsiz',
+            'Açılacak form veya ekran tanımlanmamış. Lütfen görev akışı ayarlarından "Form Aç" düğümünde geçerli bir Belge, Kart veya Liste seçiniz.'
+          )
+        );
+
+        const userFacingTitle = (
+          baslaNode?.dugmeBasligi ||
+          baslaNode?.DugmeBasligi ||
+          item.dugmeBasligi ||
+          item.baslik ||
+          effectivePrompt
+        ).trim();
+        const warnText = t(
+          'form_ac_hedef_tanimsiz_chat',
+          '⚠️ Bu görev akışındaki "Form Aç" adımında hangi formun açılacağı yapılandırılmamış. Lütfen sistem yöneticisi veya görev akışı ayarlarından açılacak formu (Belge/Kart/Liste) belirleyiniz.'
+        );
+        if (appendLocalExchange) {
+          appendLocalExchange(userFacingTitle, warnText);
+        }
+        return;
+      }
       const shouldWaitForSave = (firstActionNode?.kayitBekle ?? firstActionNode?.KayitBekle) !== false;
       const entityLabel =
         firstActionNode?.varlikAdi ||

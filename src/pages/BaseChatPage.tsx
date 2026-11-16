@@ -90,6 +90,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { reportErrorToAdmin } from '@akalin/notification_module';
 import { useTranslation } from 'react-i18next';
 import {
     BasePage,
@@ -1601,13 +1602,13 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                     };
                                                     (item as any).activeNodeId = firstNodeId;
 
-                                                    if (effectiveUiAction === 'BULUT_DOSYA_SEC') {
+                                                    if (!isFormOpenStep && effectiveUiAction === 'BULUT_DOSYA_SEC') {
                                                         setPendingHizliIstek(item);
                                                         setIsCloudPickerOpen(true);
                                                         return;
                                                     }
 
-                                                    if (effectiveUiAction === 'METIN_YAPISTIR_MODAL') {
+                                                    if (!isFormOpenStep && effectiveUiAction === 'METIN_YAPISTIR_MODAL') {
                                                         setPendingHizliIstek(item);
                                                         setModalInputText('');
                                                         setIsTextModalOpen(true);
@@ -1616,7 +1617,50 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
 
                                                     if (isFormOpenStep || (effectiveUiAction && effectiveUiAction !== 'YOK')) {
                                                         const currentRoute = typeof window !== 'undefined' ? window.location.pathname : '';
-                                                        const resolvedTargetRoute = nodeTargetRoute || sug.uiParametreleriJson || '';
+                                                        const resolvedTargetRoute = (nodeTargetRoute || sug.uiParametreleriJson || '').trim();
+                                                        const isFormConfigured =
+                                                            (Boolean(resolvedTargetRoute) && resolvedTargetRoute !== '/') ||
+                                                            Boolean(nodeVarlikKodu) ||
+                                                            Boolean(firstActionNode?.mcpVarlikId);
+
+                                                        if (isFormOpenStep && !isFormConfigured) {
+                                                            reportErrorToAdmin({
+                                                                url: window.location.href,
+                                                                hataMesaji: `[Görev Akışı: ${item.baslik || 'Form Aç'}] "Form Aç" adımında açılacak form veya ekran tanımlanmamış.`,
+                                                                detay: JSON.stringify({
+                                                                    workflowId: item.id,
+                                                                    workflowTitle: item.baslik,
+                                                                    nodeId: firstNodeId,
+                                                                    node: firstActionNode
+                                                                })
+                                                            });
+                                                            toast.error(
+                                                                t(
+                                                                    'form_ac_hedef_tanimsiz',
+                                                                    'Açılacak form veya ekran tanımlanmamış. Lütfen görev akışı ayarlarından "Form Aç" düğümünde geçerli bir Belge, Kart veya Liste seçiniz.'
+                                                                )
+                                                            );
+
+                                                            const errTime = new Date().toISOString();
+                                                            const warnMsg: any = {
+                                                                id: `a_${Date.now()}`,
+                                                                role: 'assistant',
+                                                                content: t(
+                                                                    'form_ac_hedef_tanimsiz_chat',
+                                                                    '⚠️ Bu görev akışındaki "Form Aç" adımında hangi formun açılacağı yapılandırılmamış. Lütfen sistem yöneticisi veya görev akışı ayarlarından açılacak formu (Belge/Kart/Liste) belirleyiniz.'
+                                                                ),
+                                                                timestamp: errTime,
+                                                                agentName: currentAgent?.ad || currentAgent?.name || t('auto_erp_asistani', 'ERP Asistanı')
+                                                            };
+                                                            setSessions((prevSessions) =>
+                                                                prevSessions.map((s) =>
+                                                                    s.id?.toString() === activeSessionId?.toString()
+                                                                        ? { ...s, updatedAt: errTime, messages: [...s.messages, warnMsg] }
+                                                                        : s
+                                                                )
+                                                            );
+                                                            return;
+                                                        }
                                                         const shouldWaitForSave = (firstActionNode?.kayitBekle ?? firstActionNode?.KayitBekle) !== false;
                                                         const entityLabel =
                                                             firstActionNode?.varlikAdi ||
