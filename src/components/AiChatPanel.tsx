@@ -40,21 +40,12 @@ const renderHizliIstekIcon = (iconName?: string) => {
 
 // ─── AKALIN UI ENTEGRASYONU VE GÜVENLİ FALLBACK'LER ─────────────────────────
 
-let AkalinUiTypingIndicator: any = null;
-let AkalinUiResponseTimer: any = null;
-let AkalinUiThinkingDetails: any = null;
-let AkalinUiFilesOnClouds: any = null;
-
-try {
-  // @ts-ignore
-  const ui = require('@akalin/ui');
-  AkalinUiTypingIndicator = ui.AiTypingIndicator;
-  AkalinUiResponseTimer = ui.AiResponseTimer;
-  AkalinUiThinkingDetails = ui.AiThinkingDetails;
-  AkalinUiFilesOnClouds = ui.FilesOnClouds;
-} catch {
-  // Fallback devrede
-}
+import {
+  AiTypingIndicator as AkalinUiTypingIndicator,
+  AiResponseTimer as AkalinUiResponseTimer,
+  AiThinkingDetails as AkalinUiThinkingDetails,
+  FilesOnClouds as AkalinUiFilesOnClouds
+} from '@akalin/ui';
 
 const DefaultTypingIndicator = () => (
   <div className="ai-default-typing">

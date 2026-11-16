@@ -102,6 +102,7 @@ import {
     AiTypingIndicator,
     AiResponseTimer,
     AiThinkingDetails,
+    FilesOnClouds as AkalinUiFilesOnClouds,
     updateDocumentTitle,
     useHeaderApi,
     type BreadcrumbSubItem
@@ -129,14 +130,7 @@ export type {
     PromptSuggestion
 };
 
-let AkalinUiFilesOnClouds: any = null;
-try {
-    // @ts-ignore
-    const ui = require('@akalin/ui');
-    AkalinUiFilesOnClouds = ui.FilesOnClouds;
-} catch {
-    // Fallback
-}
+
 
 const renderBaseChatHizliIstekIcon = (iconName?: string) => {
     switch (iconName) {
