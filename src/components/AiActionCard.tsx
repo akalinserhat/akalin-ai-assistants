@@ -17,7 +17,8 @@ import {
   FileSpreadsheet,
   MapPin,
   Plus,
-  Check
+  Check,
+  ListFilter
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AiActionCardProps, AiActionOptionItem } from '../types';
@@ -86,9 +87,26 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
     };
   }, [isWaitingExternal]);
 
+  const hasAutoAppliedRef = React.useRef(false);
+  useEffect(() => {
+    if (!data) return;
+    const isUpdate = (data.eylemTipi || data.actionType || data.action) === 'UPDATE_ACTIVE_FORM_ITEMS';
+    if (isUpdate && data.otomatikUygula !== false && !hasAutoAppliedRef.current && !isResolved) {
+      hasAutoAppliedRef.current = true;
+      window.dispatchEvent(new CustomEvent('akalin:mcp-update-active-form-items', { detail: data }));
+      window.dispatchEvent(new CustomEvent('ai-update-active-form-items', { detail: data }));
+      if (onApply) {
+        onApply(data);
+      }
+      setIsResolved(true);
+      toast.success(data.basariMesaji || t('Açık form satırları başarıyla güncellendi.'));
+    }
+  }, [data, isResolved, onApply, t]);
+
   if (!data) return null;
 
   const eylemTipi = data.eylemTipi || data.actionType || data.action || 'BELGE_DOLDUR';
+  const isUpdateActiveForm = eylemTipi === 'UPDATE_ACTIVE_FORM_ITEMS' || data.action === 'UPDATE_ACTIVE_FORM_ITEMS';
   const belgeTuru = data.belgeTuru || data.documentType || t('Belge');
   const isApprovalOrSelection = eylemTipi === 'ONAY_ISTE' || eylemTipi === 'SECIM_ISTE';
   const isExcelImport = eylemTipi === 'EXCEL_IMPORT' || data.action === 'EXCEL_IMPORT';
@@ -221,6 +239,14 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
     } else if (isNavigation && targetUrl) {
       navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
       toast.success(t('İlgili sayfaya geçiş yapıldı.'));
+    } else if (isUpdateActiveForm) {
+      window.dispatchEvent(new CustomEvent('akalin:mcp-update-active-form-items', { detail: data }));
+      window.dispatchEvent(new CustomEvent('ai-update-active-form-items', { detail: data }));
+      if (onApply) {
+        onApply(data);
+      }
+      setIsResolved(true);
+      toast.success(data.basariMesaji || t('Açık form satırları başarıyla güncellendi.'));
     } else if (onApply) {
       onApply(data);
     } else if (targetUrl) {
@@ -278,6 +304,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
   };
 
   const getHeaderIcon = () => {
+    if (isUpdateActiveForm) return <ListFilter size={16} className="ai-action-card-icon-accent" />;
     if (isExcelImport) return <FileSpreadsheet size={16} className="ai-action-card-icon-accent" />;
     if (isApprovalOrSelection) return <MapPin size={16} className="ai-action-card-icon-accent" />;
     if (isNavigation) return <ExternalLink size={16} />;
@@ -349,7 +376,13 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         <div className="ai-action-card-title-group">
           {getHeaderIcon()}
           <span>
-            {data.baslik || data.title || (isExcelImport ? t('Excel / Belge İçe Aktarımı Bekleniyor') : `${belgeTuru} ${t('Taslağı')}`)}
+            {data.baslik || data.title || (
+              isUpdateActiveForm
+                ? (data.islemTipi === 'SIL' ? t('Açık Formdan Satır Silme') : t('Açık Form Satırlarını Güncelleme'))
+                : isExcelImport
+                  ? t('Excel / Belge İçe Aktarımı Bekleniyor')
+                  : `${belgeTuru} ${t('Taslağı')}`
+            )}
           </span>
         </div>
         <span className={`ai-action-card-badge ${badgeStateClass}`}>
@@ -361,6 +394,14 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         <p className="ai-action-card-summary">
           {data.ozet || data.summary || data.aciklama}
         </p>
+      )}
+
+      {isUpdateActiveForm && (
+        <div className="ai-action-card-update-meta" style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '4px', margin: '6px 0', padding: '6px 8px', background: 'rgba(0,0,0,0.03)', borderRadius: '6px' }}>
+          {data.islemTipi && <div><strong>{t('İşlem')}:</strong> {data.islemTipi}</div>}
+          {data.hedefAlan && <div><strong>{t('Hedef Alan')}:</strong> {data.hedefAlan}</div>}
+          {data.eslesmeDegeri && <div><strong>{t('Eşleşen Değer')}:</strong> {data.eslesmeDegeri}</div>}
+        </div>
       )}
 
       {/* Seçenekler Listesi (Radyo / Kart Seçimi) */}
@@ -429,7 +470,12 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
       )}
 
       {/* Onay / Seçim Modu Düğmeleri */}
-      {isApprovalOrSelection ? (
+      {isUpdateActiveForm && isResolved ? (
+        <div className="ai-action-card-resolved-note" style={{ margin: '8px 0 0 0', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--success, #16a34a)' }}>
+          <CheckCircle2 size={14} />
+          <span>{data.basariMesaji || t('Açık form satırları başarıyla güncellendi.')}</span>
+        </div>
+      ) : isApprovalOrSelection ? (
         !isWaitingExternal && (
           isResolved ? (
             <div className="ai-action-card-resolved-note">
@@ -481,6 +527,11 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
               <>
                 <span>{data.butonYazisi || t('Sayfaya Git')}</span>
                 <ArrowRight size={13} />
+              </>
+            ) : isUpdateActiveForm ? (
+              <>
+                <Check size={14} />
+                <span>{data.butonYazisi || t('Uygula')}</span>
               </>
             ) : (
               <>
