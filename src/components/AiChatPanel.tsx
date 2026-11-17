@@ -7,7 +7,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { reportErrorToAdmin } from '@akalin/notification_module';
 import {
   Bot, Sparkles, X, Plus, Trash2, Edit3, Check, MessageSquare,
   Send, Mic, MicOff, Layers, Maximize2, Compass, Sparkle, Paperclip,
@@ -882,23 +881,19 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
     if (isFormOpenStep || (effectiveUiAction && effectiveUiAction !== 'YOK')) {
       const currentRoute = pageContext?.route || (typeof window !== 'undefined' ? window.location.pathname : '');
-      const resolvedTargetRoute = (nodeTargetRoute || item.uiParametreleriJson || '').trim();
+      const hasFlowchartNodes = rawNodes.length > 0;
+      const resolvedTargetRoute = (
+        nodeTargetRoute ||
+        (!hasFlowchartNodes ? item.uiParametreleriJson : '') ||
+        ''
+      ).trim();
+
       const isFormConfigured =
         (Boolean(resolvedTargetRoute) && resolvedTargetRoute !== '/') ||
         Boolean(nodeVarlikKodu) ||
-        Boolean(firstActionNode?.mcpVarlikId);
+        Boolean(firstActionNode?.mcpVarlikId || (firstActionNode as any)?.McpVarlikId);
 
       if (isFormOpenStep && !isFormConfigured) {
-        reportErrorToAdmin({
-          url: window.location.href,
-          hataMesaji: `[Görev Akışı: ${item.baslik || 'Form Aç'}] "Form Aç" adımında açılacak form veya ekran tanımlanmamış.`,
-          detay: JSON.stringify({
-            workflowId: item.id,
-            workflowTitle: item.baslik,
-            nodeId: firstNodeId,
-            node: firstActionNode
-          })
-        });
         toast.error(
           t(
             'form_ac_hedef_tanimsiz',
@@ -915,7 +910,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         ).trim();
         const warnText = t(
           'form_ac_hedef_tanimsiz_chat',
-          '⚠️ Bu görev akışındaki "Form Aç" adımında hangi formun açılacağı yapılandırılmamış. Lütfen sistem yöneticisi veya görev akışı ayarlarından açılacak formu (Belge/Kart/Liste) belirleyiniz.'
+          '⚠️ Bu görev akışındaki "Form Aç" adımında hangi formun veya belgenin açılacağı seçilmemiştir. Lütfen Ajan Görev Akışı ayarlarından açılacak formu (Belge, Kart veya Liste) belirleyiniz.'
         );
         if (appendLocalExchange) {
           appendLocalExchange(userFacingTitle, warnText);

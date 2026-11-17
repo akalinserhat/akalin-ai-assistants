@@ -21,7 +21,6 @@ import {
   ListFilter
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { reportErrorToAdmin } from '@akalin/notification_module';
 import { AiActionCardProps, AiActionOptionItem } from '../types';
 import { AiChatContext } from '../context/AiChatContext';
 
@@ -226,11 +225,6 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
     } else if (isFormOpen) {
       const formTarget = (targetUrl || '').trim();
       if (!formTarget || formTarget === '/') {
-        reportErrorToAdmin({
-          url: typeof window !== 'undefined' ? window.location.href : '',
-          hataMesaji: `[Görev Akışı: ${data.waitingEntityPayload?.workflowTitle || data.baslik || 'Form Aç'}] "Form Aç" eyleminde açılacak form veya hedef rota tanımlanmamış.`,
-          detay: JSON.stringify(data.waitingEntityPayload || data)
-        });
         toast.error(t('form_ac_hedef_tanimsiz', 'Açılacak form veya ekran tanımlanmamış. Lütfen görev akışı ayarlarından "Form Aç" düğümünde geçerli bir Belge, Kart veya Liste seçiniz.'));
         return;
       }
