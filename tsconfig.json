@@ -25,6 +25,9 @@
       "@akalin/ui": [
         "../akalin-ui/src/index.ts",
         "../ui/src/index.ts"
+      ],
+      "@akalin/notification_module": [
+        "../akalin-notification-module/src/index.ts"
       ]
     }
   },
