@@ -7,6 +7,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
+import { reportErrorToAdmin } from '@akalin/notification_module';
 import {
   Bot, Sparkles, X, Plus, Trash2, Edit3, Check, MessageSquare,
   Send, Mic, MicOff, Layers, Maximize2, Compass, Sparkle, Paperclip,
@@ -894,10 +895,28 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         Boolean(firstActionNode?.mcpVarlikId || (firstActionNode as any)?.McpVarlikId);
 
       if (isFormOpenStep && !isFormConfigured) {
+        const agentId = currentAgent?.id || '';
+        const workflowId = item.id || '';
+        const nodeId = firstNodeId || '';
+
+        reportErrorToAdmin({
+          url: `/ayarlar/YapayZekaAyarlari/AiAjanlar/${agentId}/hizli-istek/${workflowId}/adim/${nodeId}`,
+          hataMesaji: `[AI Görev Akışı Eksik Yapılandırma] "${item.baslik || 'Görev Akışı'}" akışındaki "${firstActionNode?.baslik || 'Form Aç'}" adımında açılacak Belge, Kart veya Liste seçilmemiş.`,
+          detay: JSON.stringify({
+            ajanId: agentId,
+            ajanAdi: currentAgent?.ad,
+            workflowId: workflowId,
+            workflowTitle: item.baslik,
+            nodeId: nodeId,
+            nodeBaslik: firstActionNode?.baslik || 'Form Aç',
+            cozum: 'Yapay Zeka Ajanları > Görev Akışı ayarlarından ilgili "Form Aç" düğümünün açacağı ekranı (Belge/Kart/Liste) belirleyiniz.'
+          })
+        });
+
         toast.error(
           t(
-            'form_ac_hedef_tanimsiz',
-            'Açılacak form veya ekran tanımlanmamış. Lütfen görev akışı ayarlarından "Form Aç" düğümünde geçerli bir Belge, Kart veya Liste seçiniz.'
+            'form_ac_sistemsel_hata_toast',
+            'Sistemsel bir yapılandırma hatası tespit edildi ve sistem yöneticisine raporlandı.'
           )
         );
 
@@ -909,8 +928,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
           effectivePrompt
         ).trim();
         const warnText = t(
-          'form_ac_hedef_tanimsiz_chat',
-          '⚠️ Bu görev akışındaki "Form Aç" adımında hangi formun veya belgenin açılacağı seçilmemiştir. Lütfen Ajan Görev Akışı ayarlarından açılacak formu (Belge, Kart veya Liste) belirleyiniz.'
+          'form_ac_sistemsel_hata_chat',
+          '⚠️ Bu işlemde sistemsel bir yapılandırma eksikliği tespit edildi ve durum sistem yöneticisine raporlandı. Lütfen daha sonra tekrar deneyiniz veya sistem yöneticinizle iletişime geçiniz.'
         );
         if (appendLocalExchange) {
           appendLocalExchange(userFacingTitle, warnText);
