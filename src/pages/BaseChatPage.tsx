@@ -1855,16 +1855,17 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                 }
 
                                 const rawMsgContent = msg.content || '';
-                                const userExtractedDetails: Array<{ title: string; body: string }> = [];
+                                const extractedDetails: Array<{ title: string; body: string }> = [];
                                 let bubbleContent = rawMsgContent;
 
-                                if (isUser && rawMsgContent.includes(':::details')) {
+                                // 1. Kullanıcı veya asistan mesajlarındaki :::details [Başlık]\n...\n::: bloklarını Antigravity tarzı açılır karta taşı
+                                if (rawMsgContent.includes(':::details')) {
                                     const parts = rawMsgContent.split(/(:::details\s+[^\n]+\n[\s\S]*?:::)/g);
                                     const remaining: string[] = [];
                                     parts.forEach((seg) => {
                                         const m = seg.match(/^:::details\s+([^\n]+)\n([\s\S]*?):::$/);
                                         if (m) {
-                                            userExtractedDetails.push({
+                                            extractedDetails.push({
                                                 title: m[1].trim(),
                                                 body: m[2].trim(),
                                             });
@@ -1873,6 +1874,25 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                         }
                                     });
                                     bubbleContent = remaining.join('\n\n').trim();
+                                }
+
+                                // 2. Asistan mesajı başında ham teknik telemetri bloğu (🌐 Model Sağlayıcısı ... ---) varsa gizli açılır karta ayır
+                                if (!isUser && bubbleContent) {
+                                    const techHeaderPattern = /^(?:🌐\s*\*\*Model Sağlayıcısı:\*\*|🖥️\s*\*\*Sanal Tarayıcı Motoru:\*\*|🎯\s*\*\*Hedef URL:\*\*|🛡️\s*\*\*Dinamik Tarayıcı Güvenlik Kontrolleri:\*\*)/;
+                                    if (techHeaderPattern.test(bubbleContent.trim())) {
+                                        const sepMatch = bubbleContent.match(/\n\s*---\s*\n/);
+                                        if (sepMatch && sepMatch.index !== undefined) {
+                                            const techBody = bubbleContent.slice(0, sepMatch.index).trim();
+                                            const answerBody = bubbleContent.slice(sepMatch.index + sepMatch[0].length).trim();
+                                            if (techBody) {
+                                                extractedDetails.push({
+                                                    title: t('auto_teknik_bilgiler', 'Teknik Bilgiler & Bağlantı Detayları'),
+                                                    body: techBody,
+                                                });
+                                                bubbleContent = answerBody;
+                                            }
+                                        }
+                                    }
                                 }
 
                                 return (
@@ -1933,12 +1953,13 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                                                 />
                                             )}
 
-                                            {userExtractedDetails.map((det, detIdx) => (
+                                            {extractedDetails.map((det, detIdx) => (
                                                 <CollapsibleExtraInfo
                                                     key={`u-det-${msg.id || index}-${detIdx}`}
                                                     title={det.title}
                                                     content={det.body}
                                                     baseKey={`u-det-${msg.id || index}-${detIdx}`}
+                                                    defaultExpanded={false}
                                                     className="ai-thinking-details-card"
                                                 />
                                             ))}
