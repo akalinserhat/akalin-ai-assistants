@@ -180,6 +180,25 @@ export interface BaseChatPageProps extends Omit<BasePageProps, 'onTitleEdit'> {
     // Kontrollü Üretim Durumu (Streaming & Stop)
     isGenerating?: boolean;
     onStopGeneration?: () => void;
+    /** Yanıt üretilirken gösterilecek dinamik ana durum metni */
+    generatingStatusText?: string;
+    /** Canlı süreç kartındaki aktif aşama etiketi (Örn: "Sanal tarayıcı bağlantısı") */
+    generatingStageLabel?: string;
+    /** Canlı süreç kartındaki detaylı aşama açıklaması */
+    generatingStageDetail?: string;
+    /** Adım adım canlı ilerleme listesi */
+    generatingSteps?: {
+        id?: string;
+        label: string;
+        detail?: string;
+        status: 'done' | 'active' | 'pending';
+    }[];
+    /** Arka plandan gelen son canlı durum/telemetri satırları */
+    generatingLogs?: string[];
+    /** Canlı akışta alınan toplam karakter sayısı */
+    liveStreamedChars?: number;
+    /** İlk token süresi (ms) */
+    liveTtftMs?: number;
 
     // Sistem Yönergesi (System Prompt)
     systemPrompt?: string;
@@ -309,6 +328,13 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
     onApplyToForm,
     isGenerating: externalIsGenerating,
     onStopGeneration,
+    generatingStatusText,
+    generatingStageLabel,
+    generatingStageDetail,
+    generatingSteps,
+    generatingLogs,
+    liveStreamedChars = 0,
+    liveTtftMs = 0,
     systemPrompt: externalSystemPrompt,
     onSystemPromptChange,
     agents: externalAgents,
@@ -2116,29 +2142,61 @@ const BaseChatPage: React.FC<BaseChatPageProps> = ({
                         )}
 
                         {/* Yapay Zeka Yanıt Üretirken Canlı Göstergeler */}
-                        {isGenerating && (
-                            <div className="flex flex-col gap-6">
-                                <RagIndexingWaitBanner
-                                    state={ragIndexingState}
-                                    elapsedSeconds={elapsedSeconds}
-                                />
-                                {ragIndexingState?.phase !== 'indexing' && (
-                                    <AiTypingIndicator
-                                        showAvatar={true}
-                                        statusText={t('auto_ai_yanit_hazirliyor', 'Yapay zeka yanıtı hazırlıyor...')}
-                                    />
-                                )}
-                                {enableResponseTimer && (
-                                    <AiResponseTimer
+                        {isGenerating && (() => {
+                            const resolvedSteps =
+                                generatingSteps && generatingSteps.length > 0
+                                    ? generatingSteps
+                                    : [
+                                          {
+                                              id: 'send',
+                                              label: t('ai_asama_istek_iletildi', 'İstem modele iletildi'),
+                                              status: 'done' as const,
+                                          },
+                                          {
+                                              id: 'process',
+                                              label: t('ai_asama_baglam_analiz', 'Model bağlamı işliyor'),
+                                              status: (liveStreamedChars > 0 ? 'done' : 'active') as 'done' | 'active',
+                                          },
+                                          {
+                                              id: 'stream',
+                                              label: t('ai_asama_yanit_akisi', 'Yanıt oluşturuluyor ve aktarılıyor'),
+                                              status: (liveStreamedChars > 0 ? 'active' : 'pending') as 'active' | 'pending',
+                                          },
+                                      ];
+                            const effectiveStatusText =
+                                generatingStatusText ||
+                                generatingStageLabel ||
+                                t('auto_ai_yanit_hazirliyor', 'Yapay zeka yanıtı hazırlıyor...');
+                            return (
+                                <div className="flex flex-col gap-6">
+                                    <RagIndexingWaitBanner
+                                        state={ragIndexingState}
                                         elapsedSeconds={elapsedSeconds}
-                                        onStop={handleStopGeneration}
-                                        agentName={activeAgent?.ad}
-                                        providerName={activeAgent?.saglayiciTuruAdi}
-                                        modelName={activeAgent?.modelAdi || defaultModel}
                                     />
-                                )}
-                            </div>
-                        )}
+                                    {ragIndexingState?.phase !== 'indexing' && (
+                                        <AiTypingIndicator
+                                            showAvatar={true}
+                                            statusText={effectiveStatusText}
+                                        />
+                                    )}
+                                    {enableResponseTimer && (
+                                        <AiResponseTimer
+                                            elapsedSeconds={elapsedSeconds}
+                                            onStop={handleStopGeneration}
+                                            agentName={activeAgent?.ad}
+                                            providerName={activeAgent?.saglayiciTuruAdi}
+                                            modelName={activeAgent?.modelAdi || defaultModel}
+                                            liveStageLabel={generatingStageLabel}
+                                            liveStageDetail={generatingStageDetail}
+                                            liveSteps={resolvedSteps}
+                                            liveLogs={generatingLogs}
+                                            streamedCharCount={liveStreamedChars}
+                                            ttftMs={liveTtftMs}
+                                        />
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                         <div ref={messagesEndRef} />
                     </div>

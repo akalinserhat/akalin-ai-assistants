@@ -55,7 +55,10 @@ export const AI_ASSISTANTS_LOCALES = {
     'ai_rag_indeksleniyor_baslik': 'Dosya İndeksleme Aşamasında',
     'ai_rag_indeks_hata_aciklama': 'ThinkPort belge indekslemesi sırasında bir sorun oluştu.',
     'ai_rag_indeks_tamamlandi_aciklama': 'Belge RAG veritabanına aktarıldı. İşleminiz kaldığı yerden otomatik olarak devam ediyor...',
-    'ai_rag_indeksleniyor_aciklama': 'Seçili belge ThinkPort gecikmesi / kuyruğu nedeniyle şu anda RAG veritabanına indeksleniyor. İndeksleme tamamlandığında işleminiz kaldığı yerden otomatik olarak devam edecektir.'
+    'ai_rag_indeksleniyor_aciklama': 'Seçili belge ThinkPort gecikmesi / kuyruğu nedeniyle şu anda RAG veritabanına indeksleniyor. İndeksleme tamamlandığında işleminiz kaldığı yerden otomatik olarak devam edecektir.',
+    'ai_asama_istek_iletildi': 'İstem modele iletildi',
+    'ai_asama_baglam_analiz': 'Model bağlamı işliyor',
+    'ai_asama_yanit_akisi': 'Yanıt oluşturuluyor ve aktarılıyor'
   },
   en: {
     'ai_asistan_baslik': 'AI Assistant',
@@ -107,6 +110,9 @@ export const AI_ASSISTANTS_LOCALES = {
     'ai_rag_indeksleniyor_baslik': 'Document Indexing in Progress',
     'ai_rag_indeks_hata_aciklama': 'An error occurred while indexing the document in ThinkPort.',
     'ai_rag_indeks_tamamlandi_aciklama': 'The document has been indexed into the RAG database. Resuming your request automatically...',
-    'ai_rag_indeksleniyor_aciklama': 'The selected file is currently being indexed into the RAG database by ThinkPort. Your request will resume automatically from where it left off once indexing finishes.'
+    'ai_rag_indeksleniyor_aciklama': 'The selected file is currently being indexed into the RAG database by ThinkPort. Your request will resume automatically from where it left off once indexing finishes.',
+    'ai_asama_istek_iletildi': 'Prompt dispatched to model',
+    'ai_asama_baglam_analiz': 'Model is processing context',
+    'ai_asama_yanit_akisi': 'Generating and streaming response'
   }
 };

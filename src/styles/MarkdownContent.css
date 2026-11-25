@@ -249,6 +249,19 @@
   font-style: italic;
 }
 
+.ai-chat-divider {
+  border: none;
+  border-top: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+  margin: 10px 0;
+}
+
+.ai-chat-heading-4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  color: var(--text-primary, inherit);
+}
+
 .ai-chat-spacer {
   height: 6px;
 }

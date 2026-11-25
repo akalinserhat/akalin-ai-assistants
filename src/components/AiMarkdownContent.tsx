@@ -204,7 +204,21 @@ export const renderMarkdownBlocks = (text: string, baseKey: string | number = 0)
       continue;
     }
 
-    // 3. Başlıklar (###, ##, #)
+    // 3. Başlıklar (####, ###, ##, #) ve Yatay Ayraç (--- / ***)
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      elements.push(<hr key={`hr-${baseKey}-${i}`} className="ai-chat-divider" />);
+      i++;
+      continue;
+    }
+    if (trimmed.startsWith('#### ')) {
+      elements.push(
+        <h6 key={`h4-${baseKey}-${i}`} className="ai-chat-heading-4">
+          {renderInlineMarkdown(trimmed.slice(5))}
+        </h6>
+      );
+      i++;
+      continue;
+    }
     if (trimmed.startsWith('### ')) {
       elements.push(
         <h5 key={`h3-${baseKey}-${i}`} className="ai-chat-heading-3">
@@ -300,7 +314,8 @@ export const renderMarkdownBlocks = (text: string, baseKey: string | number = 0)
       !/^[-*]\s+/.test(rawLines[i].trim()) &&
       !/^\d+\.\s+/.test(rawLines[i].trim()) &&
       !rawLines[i].trim().startsWith('> ') &&
-      !rawLines[i].trim().startsWith('![')
+      !rawLines[i].trim().startsWith('![') &&
+      !/^[-*_]{3,}$/.test(rawLines[i].trim())
     ) {
       paragraphLines.push(rawLines[i]);
       i++;
@@ -366,6 +381,100 @@ export const CollapsibleExtraInfo: React.FC<{
   );
 };
 
+// ─── LLM / WEB MODEL METİN NORMALLEŞTİRİCİSİ (ChatGPT Web vb.) ───────────────
+
+const WEB_TRAILING_NOISE_PATTERNS: RegExp[] = [
+  /\s*(?:[-•]\s*)?Worked\s+for\s+\d+\s*[smh]\b[\s\S]*$/i,
+  /\s*(?:[-•]\s*)?ChatGPT\s+is\s+AI\s+and\s+can\s+make\s+mistakes[\s\S]*$/i,
+  /\s*(?:[-•]\s*)?ChatGPT\s+can\s+make\s+mistakes[\s\S]*$/i,
+  /\s*(?:[-•]\s*)?ChatGPT\s+hata\s+yapabilir[\s\S]*$/i,
+  /\s*(?:[-•]\s*)?New\s+chat\s*(?:\n?[-•]?\s*)?Images\s*(?:\n?[-•]?\s*)?Shopping[\s\S]*$/i,
+];
+
+/**
+ * Web arayüzlerinden (özellikle ChatGPT Web) yapışık/düz metin halinde gelmiş eski veya
+ * ham yanıtları bileşen düzeyinde temiz Markdown (tablo, liste, paragraf) biçimine dönüştürür.
+ * Zaten yapılandırılmış Markdown (tablo, kod bloğu, başlık/liste) içeren metinlere dokunmaz.
+ */
+export const normalizeStructuredMarkdown = (raw: string): string => {
+  if (!raw) return '';
+  let text = raw.replace(/\r\n/g, '\n').trim();
+
+  // 1. Sızmış ChatGPT Web alt uyarı / kenar çubuğu kalıntılarını temizle
+  for (const pat of WEB_TRAILING_NOISE_PATTERNS) {
+    const match = text.match(pat);
+    if (match && typeof match.index === 'number' && match.index > 20) {
+      text = text.slice(0, match.index).trimEnd();
+    }
+  }
+
+  // 2. Eski hatalı camelCase kırılmalarını onar (Örn: "Mc\n- Donald's" -> "McDonald's")
+  text = text.replace(/\bMc\s*\n-\s*Donald/g, 'McDonald');
+
+  // 3. Zaten gerçek Markdown tablosu, kod bloğu veya çok satırlı başlık/liste yapısı varsa koru
+  const hasRealMarkdown =
+    text.includes('```') ||
+    /\n\|\s*[-:]+/.test(text) ||
+    ((text.match(/\n/g) || []).length >= 4 && /(^|\n)(#{1,4}\s+|[-*]\s+|\d+\.\s+)/.test(text));
+  if (hasRealMarkdown) {
+    return text.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  // 4. Tek blok yapışık Web yanıtlarını okunabilir paragraf, liste ve tablolara ayır
+  // 4a. Yapışık numaralı tablo satırları: "1. Ofis temizliği$14–182. Otel oda temizliği$14–18"
+  const gluedNumberedMatches = text.match(/\b\d+\.\s+[^\n]+?(?=\d+\.\s+|$)/g);
+  if (gluedNumberedMatches && gluedNumberedMatches.length >= 3 && (text.match(/\n/g) || []).length <= 2) {
+    // Sayısal madde geçişlerinden önce yeni satır aç: "...$14–182. Otel" veya "...Değişken6. Uber"
+    text = text.replace(/([^\n\s])(\d{1,2}\.\s+[A-ZÇĞİÖŞÜ])/g, '$1\n$2');
+
+    // Eğer satırların çoğunda fiyat/değer sütunu ($14–18, Değişken vb.) yapışıksa Markdown tablosuna dönüştür
+    const lines = text.split('\n');
+    const outLines: string[] = [];
+    let tableBuffer: { item: string; value: string }[] = [];
+
+    const flushTable = () => {
+      if (tableBuffer.length >= 3) {
+        outLines.push('');
+        outLines.push('| Seçenek | Tahmini Değer / Not |');
+        outLines.push('| --- | --- |');
+        for (const row of tableBuffer) {
+          outLines.push(`| ${row.item.replace(/\|/g, '/')} | ${row.value.replace(/\|/g, '/')} |`);
+        }
+        outLines.push('');
+      } else {
+        for (const row of tableBuffer) {
+          outLines.push(`${row.item}${row.value ? ` — **${row.value}**` : ''}`);
+        }
+      }
+      tableBuffer = [];
+    };
+
+    for (const ln of lines) {
+      const t = ln.trim();
+      const rowMatch = t.match(
+        /^(\d{1,2}\.\s+.+?)(\$\d[\d.,\s–-]*|€\d[\d.,\s–-]*|₺\d[\d.,\s–-]*|Değişken|Variable)$/i
+      );
+      if (rowMatch) {
+        tableBuffer.push({ item: rowMatch[1].trim(), value: rowMatch[2].trim() });
+      } else {
+        if (tableBuffer.length > 0) flushTable();
+        outLines.push(t);
+      }
+    }
+    if (tableBuffer.length > 0) flushTable();
+    text = outLines.join('\n');
+  }
+
+  // 4b. Nokta/ünlem/soru sonrası boşluksuz yapışan cümle ve başlık geçişlerini ayır
+  text = text.replace(/([.!?])(?=[A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})/g, '$1\n\n');
+
+  // 4c. İki nokta sonrası yapışık liste/virgül maddelerini ayır: "...kullanarak:Catering...,Etkinlik..."
+  text = text.replace(/:(?=[A-ZÇĞİÖŞÜ][a-zçğıöşü])/g, ':\n\n');
+  text = text.replace(/,(?=[A-ZÇĞİÖŞÜ][a-zçğıöşü]{2,})/g, '\n- ');
+
+  return text.replace(/\n{3,}/g, '\n\n').trim();
+};
+
 // ─── ANA BİLEŞEN: AiMarkdownContent ──────────────────────────────────────────
 
 export const AiMarkdownContent: React.FC<AiMarkdownContentProps> = ({ 
@@ -375,8 +484,10 @@ export const AiMarkdownContent: React.FC<AiMarkdownContentProps> = ({
 }) => {
   if (!content) return null;
 
+  const normalizedContent = normalizeStructuredMarkdown(content);
+
   // 1. Önce :::details [Başlık]\n...\n::: açılır/kapanır ekstra bilgi bloklarını ayır
-  const detailsBlocks = content.split(/(:::details\s+[^\n]+\n[\s\S]*?:::)/g);
+  const detailsBlocks = normalizedContent.split(/(:::details\s+[^\n]+\n[\s\S]*?:::)/g);
 
   return (
     <div className={`ai-chat-formatted-text ${className}`}>
