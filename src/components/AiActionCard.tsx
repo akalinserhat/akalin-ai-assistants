@@ -66,6 +66,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
 
   const [isResolved, setIsResolved] = useState<boolean>(false);
   const [isWaitingExternal, setIsWaitingExternal] = useState<boolean>(false);
+  const [hasOpenedForm, setHasOpenedForm] = useState<boolean>(false);
 
   useEffect(() => {
     if (secenekler.length > 0 && !selectedOption) {
@@ -229,6 +230,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         return;
       }
       const originRoute = data.returnRoute || (typeof window !== 'undefined' ? window.location.pathname : '/');
+      setHasOpenedForm(true);
       navigate(formTarget, {
         state: {
           initialAiData: {
@@ -242,6 +244,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
         }
       });
     } else if (isNavigation && targetUrl) {
+      setHasOpenedForm(true);
       navigate(targetUrl, { state: { initialAiData: data, fromAiChat: true } });
       toast.success(t('İlgili sayfaya geçiş yapıldı.'));
     } else if (isUpdateActiveForm) {
@@ -339,19 +342,26 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
   if (isFormOpen) {
     return (
       <div className="ai-form-open-inline-container">
-        <div className="ai-form-open-inline-actions">
-          <button
-            type="button"
-            onClick={handleApply}
-            className="ai-action-card-btn accent"
-          >
-            <ExternalLink size={14} />
-            <span>{data.butonYazisi || t('Ekranı Aç')}</span>
-            <ArrowRight size={13} />
-          </button>
-        </div>
+        {hasOpenedForm || isResolved ? (
+          <div className="ai-action-card-resolved-note ai-form-open-resolved-centered">
+            <CheckCircle2 size={14} />
+            <span>{t('Belge Açıldı')}</span>
+          </div>
+        ) : (
+          <div className="ai-form-open-inline-actions">
+            <button
+              type="button"
+              onClick={handleApply}
+              className="ai-action-card-btn accent"
+            >
+              <ExternalLink size={14} />
+              <span>{data.butonYazisi || t('Ekranı Aç')}</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        )}
 
-        {isWaiting && (
+        {isWaiting && !isResolved && (
           <div className="ai-action-card-progress">
             <div className="ai-action-card-progress-track">
               <div className="ai-action-card-progress-bar-moving" />
@@ -362,13 +372,6 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
                 {data.beklemeMetni || t('Kullanıcının dosya seçimi / içe aktarımı bekleniyor...')}
               </span>
             </div>
-          </div>
-        )}
-
-        {isResolved && !isWaiting && (
-          <div className="ai-action-card-resolved-note ai-form-open-resolved-centered">
-            <CheckCircle2 size={14} />
-            <span>{t('İşlem tamamlandı.')}</span>
           </div>
         )}
       </div>
@@ -510,6 +513,11 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
             </div>
           )
         )
+      ) : isNavigation && (hasOpenedForm || isResolved) ? (
+        <div className="ai-action-card-resolved-note">
+          <CheckCircle2 size={14} />
+          <span>{t('Belge Açıldı')}</span>
+        </div>
       ) : (
         <div className="ai-action-card-actions">
           <button
