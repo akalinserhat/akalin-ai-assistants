@@ -131,6 +131,9 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
   const kalemSayisi = data.kalemler?.length || data.items?.length || 0;
   const kampanyaSayisi = data.kampanyalar?.length || data.content?.details?.length || 0;
   const isNavigation = eylemTipi === 'SAYFAYA_GIT' || eylemTipi === 'NAVIGASYON' || isFormOpen;
+  const isOpenedNavigation = isNavigation && hasOpenedForm && !isExcelImport && eylemTipi !== 'DOSYA_BEKLENIYOR';
+  const effectiveResolved = isResolved || isOpenedNavigation;
+  const effectiveWaiting = isWaiting && !effectiveResolved;
 
   // Güncel ajan tanımlarından bu düğüme ait hariciSayfaAyarlari verisini canlı çözümle
   const resolveEffectiveExternalSettings = () => {
@@ -319,30 +322,30 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
     return <FileText size={16} />;
   };
 
-  const badgeText = isResolved
+  const badgeText = effectiveResolved
     ? t('TAMAMLANDI')
-    : isWaiting
+    : effectiveWaiting
       ? t('KULLANICI BEKLENİYOR')
       : (data.badge || eylemTipi);
 
-  const cardStateClass = isResolved
+  const cardStateClass = effectiveResolved
     ? 'is-resolved'
-    : isWaiting
+    : effectiveWaiting
       ? 'is-waiting'
       : isApprovalOrSelection
         ? 'is-approval'
         : '';
 
-  const badgeStateClass = isResolved
+  const badgeStateClass = effectiveResolved
     ? 'resolved'
-    : isWaiting
+    : effectiveWaiting
       ? 'waiting'
       : '';
 
   if (isFormOpen) {
     return (
       <div className="ai-form-open-inline-container">
-        {hasOpenedForm || isResolved ? (
+        {effectiveResolved ? (
           <div className="ai-action-card-resolved-note ai-form-open-resolved-centered">
             <CheckCircle2 size={14} />
             <span>{t('Belge Açıldı')}</span>
@@ -361,7 +364,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
           </div>
         )}
 
-        {isWaiting && !isResolved && (
+        {effectiveWaiting && (
           <div className="ai-action-card-progress">
             <div className="ai-action-card-progress-track">
               <div className="ai-action-card-progress-bar-moving" />
@@ -449,7 +452,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ rawJson, onApply, on
       )}
 
       {/* Hareketli Bekleme İlerleme Çubuğu (Animated Progress Bar) */}
-      {isWaiting && (
+      {effectiveWaiting && (
         <div className="ai-action-card-progress">
           <div className="ai-action-card-progress-track">
             <div className="ai-action-card-progress-bar-moving" />
