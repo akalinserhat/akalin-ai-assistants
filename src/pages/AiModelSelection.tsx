@@ -71,8 +71,12 @@ export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
         setSicaklik(initialData.sicaklik !== undefined ? initialData.sicaklik : 0.7);
         setMaxTokens(initialData.maxTokens !== undefined ? initialData.maxTokens : 2048);
       } else {
+        const activeModels = Array.isArray(defaultProv?.desteklenenModeller) ? defaultProv.desteklenenModeller : [];
+        const defaultValid = defaultProv?.varsayilanModel && activeModels.includes(defaultProv.varsayilanModel)
+          ? defaultProv.varsayilanModel
+          : (activeModels[0] || '');
         setAiSaglayiciId(defaultProvId);
-        setModelAdi(defaultProv?.varsayilanModel || defaultProv?.desteklenenModeller?.[0] || '');
+        setModelAdi(defaultValid);
         setSicaklik(0.7);
         setMaxTokens(2048);
       }
@@ -88,13 +92,10 @@ export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
     return providers[0] || null;
   }, [providers, aiSaglayiciId]);
 
-  // Kullanılabilir modeller (başka satırlarda seçili olanları filtrele, mevcut düzenleneni hariç tutma)
+  // Kullanılabilir modeller (ThinkPort ayarlarındaki aktif modeller; başka satırlarda seçili olanları filtrele)
   const availableModels = useMemo(() => {
     if (!selectedProvider) return [];
     const models = Array.isArray(selectedProvider.desteklenenModeller) ? [...selectedProvider.desteklenenModeller] : [];
-    if (selectedProvider.varsayilanModel && !models.includes(selectedProvider.varsayilanModel)) {
-      models.unshift(selectedProvider.varsayilanModel);
-    }
 
     const excluded = new Set(
       excludedModelNames
@@ -160,7 +161,7 @@ export const AiModelSelection: React.FC<AiModelSelectionProps> = ({
             options={availableModels}
             varsayilanModel={selectedProvider?.varsayilanModel}
             placeholder={t('model_seciniz', 'Model seçin veya arayın...')}
-            showLiveFetchButton={true}
+            showLiveFetchButton={false}
           />
         </div>
 
